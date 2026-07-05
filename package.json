@@ -1,0 +1,30 @@
+{
+  "name": "marketpulse-ai",
+  "version": "1.0.0",
+  "description": "MarketPulse-AI is a high-fidelity, human-centered SaaS and AI web application designed for market regime detection, stock forecasting, and portfolio optimization. This document outlines the comprehensive UI/UX design blueprint, serving as the production-ready specification for the capstone project frontend.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TechySakib/MarketPulse-AI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/TechySakib/MarketPulse-AI/issues"
+  },
+  "homepage": "https://github.com/TechySakib/MarketPulse-AI#readme",
+  "devDependencies": {
+    "vite": "^8.1.0"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "lightweight-charts": "^5.2.0"
+  }
+}

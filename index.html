@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="QuantEdge AI Market OS — Intelligent market regime detection, stock forecasting, and portfolio optimization for the Dhaka Stock Exchange." />
+  <title>QuantEdge · AI Market OS</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="/src/styles/main.css" />
+  <link rel="stylesheet" href="/src/styles/charts.css" />
+</head>
+<body>
+
+  <div class="app-layout">
+
+    <!-- Mobile hamburger (visible ≤768px) -->
+    <button class="mobile-toggle" id="mobileToggle" aria-label="Open menu">☰</button>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span class="brand">QUANTEDGE</span>
+          <span class="tagline">AI Market OS</span>
+        </div>
+        <button class="sidebar-toggle" aria-label="Toggle menu">☰</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-item active" data-view="market-intelligence">
+          <span class="nav-icon">📊</span>
+          <span>Market Intelligence</span>
+          <span class="nav-chevron">›</span>
+        </div>
+        <div class="nav-item" data-view="stock-analysis">
+          <span class="nav-icon">📈</span>
+          <span>Stock Analysis</span>
+          <span class="nav-chevron">›</span>
+        </div>
+        <div class="nav-item" data-view="ai-prediction">
+          <span class="nav-icon">🤖</span>
+          <span>AI Prediction</span>
+          <span class="nav-chevron">›</span>
+        </div>
+        <div class="nav-item" data-view="drift-monitor">
+          <span class="nav-icon">≋</span>
+          <span>Drift Monitor</span>
+          <span class="nav-chevron">›</span>
+        </div>
+        <div class="nav-item" data-view="my-portfolio">
+          <span class="nav-icon">👤</span>
+          <span>My Portfolio</span>
+          <span class="nav-chevron">›</span>
+        </div>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="analyst-avatar">NS</div>
+        <div class="analyst-info">
+          <span class="name">Nazmus Sakib</span>
+          <span class="status">DSE · LIVE <span class="status-dot"></span></span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ═══ STOCK TICKER ═══ -->
+    <div class="ticker-bar">
+      <div class="ticker-track" id="tickerTrack">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- ═══ AI NARRATOR ═══ -->
+    <div class="narrator-bar">
+      <span class="narrator-dot"></span>
+      <span class="narrator-label">AI NARRATOR</span>
+      <span class="narrator-text" id="narratorText">SQPHARMA showing institutional accumulation — AI confidence: 87% for next-day upside</span>
+      <span class="narrator-time" id="narratorTime">02:42:44 DHK</span>
+    </div>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main class="main-content">
+
+      <!-- ─── VIEW 1: MARKET INTELLIGENCE ─── -->
+      <section class="view active" id="view-market-intelligence">
+        <div class="grid-2col">
+          <!-- LEFT COLUMN -->
+          <div class="stack">
+
+            <!-- Market Regime Card -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">📡</span> MARKET REGIME · AI DETECTED
+                <div style="margin-left:auto; display:flex; gap:20px; align-items:baseline;">
+                  <span style="font-size:10px; color:var(--text-muted);">DRIFT SCORE</span>
+                  <span style="font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--accent-amber);">64.2</span>
+                  <span style="font-size:10px; color:var(--text-muted);">STABILITY IDX</span>
+                  <span style="font-family:var(--font-display); font-size:28px; font-weight:700; color:var(--text-bright);">38</span>
+                  <span style="font-size:10px; color:var(--text-muted);">/ 100</span>
+                </div>
+              </div>
+
+              <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
+                <span style="font-size:32px;">⚡</span>
+                <div>
+                  <div style="font-family:var(--font-display); font-size:28px; font-weight:800; color:var(--text-bright);">VOLATILE</div>
+                  <div style="font-size:12px; color:var(--text-muted);">Stormy Market</div>
+                </div>
+              </div>
+              <div style="font-size:12px; color:var(--text-secondary); margin-top:2px; font-style:italic;">
+                <span style="font-size:10px; color:var(--accent-amber); font-family:var(--font-mono);">HIGH ALERT</span>
+              </div>
+              <p style="font-size:12.5px; color:var(--text-secondary); margin-top:10px;">High turbulence — elevated systemic risk</p>
+
+              <div class="regime-scale">
+                <div class="regime-scale-segment">BULL</div>
+                <div class="regime-scale-segment">STABLE</div>
+                <div class="regime-scale-segment active">VOLATILE</div>
+                <div class="regime-scale-segment">BEAR</div>
+              </div>
+            </div>
+
+            <!-- AI Top Picks -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">🟢</span> AI TOP PICKS — NEXT 24H
+                <span class="badge-live" style="margin-left:auto;">LIVE</span>
+              </div>
+              <div id="topPicksList">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+
+            <!-- Confidence Heatmap -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">🔥</span> CONFIDENCE HEATMAP — FEATURE DECOMPOSITION
+              </div>
+              <div id="heatmapContainer">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN -->
+          <div class="stack">
+
+            <!-- Drift Alert -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">⚠</span> DRIFT ALERT
+              </div>
+              <p style="font-size:12.5px; color:var(--text-secondary); line-height:1.65; margin-bottom:16px;">
+                Market behavior shift detected in last <span class="text-bright fw-700">24h</span>. Drift score crossed critical threshold. Regime transition probability elevated.
+              </p>
+              <div class="kv-list">
+                <div class="kv-row">
+                  <span class="kv-label">Drift Score</span>
+                  <span class="kv-value"><span class="text-red">↑ HIGH</span> 64.2</span>
+                </div>
+                <div class="kv-row">
+                  <span class="kv-label">Regime Confidence</span>
+                  <span class="kv-value">71%</span>
+                </div>
+                <div class="kv-row">
+                  <span class="kv-label">Last Shift</span>
+                  <span class="kv-value"><span class="text-amber">VOLATILE</span> 2h 14m ago</span>
+                </div>
+                <div class="kv-row">
+                  <span class="kv-label">Affected Stocks</span>
+                  <span class="kv-value">46.7% 14 / 30</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Market Weather -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">⛅</span> MARKET WEATHER
+              </div>
+              <div class="weather-icon">⛈</div>
+              <div class="weather-label">Stormy Market</div>
+              <div class="weather-desc">High turbulence — elevated systemic risk</div>
+              <div class="weather-grid">
+                <div class="weather-cell">
+                  <div class="weather-cell-label">PRESSURE</div>
+                  <div class="weather-cell-value">1028 hPa</div>
+                </div>
+                <div class="weather-cell">
+                  <div class="weather-cell-label">WIND SPEED</div>
+                  <div class="weather-cell-value amber">34 knots</div>
+                </div>
+                <div class="weather-cell">
+                  <div class="weather-cell-label">VISIBILITY</div>
+                  <div class="weather-cell-value amber">Poor</div>
+                </div>
+                <div class="weather-cell">
+                  <div class="weather-cell-label">HUMIDITY</div>
+                  <div class="weather-cell-value amber">High</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Regime Events -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">⚡</span> REGIME EVENTS
+              </div>
+              <div class="event-timeline">
+                <div class="event-item">
+                  <span class="event-dot red"></span>
+                  <div>
+                    <div class="event-date">Jan 08</div>
+                    <div class="event-text">Structural break in financial sector</div>
+                  </div>
+                </div>
+                <div class="event-item">
+                  <span class="event-dot amber"></span>
+                  <div>
+                    <div class="event-date">Jan 15</div>
+                    <div class="event-text">Volatility regime transition detected</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── VIEW 2: STOCK ANALYSIS ─── -->
+      <section class="view" id="view-stock-analysis">
+        <!-- Stock Header -->
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:4px;">
+          <span class="stock-name">SQPHARMA</span>
+          <div class="stock-badges">
+            <span class="badge badge-pharma">PHARMA</span>
+            <span class="badge badge-dse">DSE</span>
+          </div>
+          <span class="stock-price-large">222.84</span>
+          <span class="stock-change down">-3.10 (-1.37%)</span>
+          <div class="time-tabs">
+            <button class="time-tab">7D</button>
+            <button class="time-tab active">30D</button>
+            <button class="time-tab">ALL</button>
+          </div>
+        </div>
+        <div class="stock-subtitle">Square Pharmaceuticals Ltd · Dhaka Stock Exchange</div>
+
+        <div class="grid-2col">
+          <!-- LEFT: Charts -->
+          <div class="stack">
+            <!-- Candlestick Chart -->
+            <div class="card">
+              <div class="chart-header-row">
+                <div class="card-header" style="margin-bottom:0;">
+                  <span class="icon">📊</span> OHLC CANDLESTICK
+                </div>
+                <div class="chart-ohlc-values">
+                  <span>O <strong>224.97</strong></span>
+                  <span>H <strong>226.18</strong></span>
+                  <span>L <strong>221.83</strong></span>
+                  <span>C <strong>222.84</strong></span>
+                </div>
+              </div>
+              <div class="chart-legend">
+                <span class="chart-legend-item"><span class="chart-legend-dash" style="border-color:var(--accent-cyan);"></span> AI Forecast</span>
+                <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--accent-green);"></span> Bull</span>
+                <span class="chart-legend-item"><span class="chart-legend-dot" style="background:var(--accent-red);"></span> Bear</span>
+              </div>
+              <div class="tv-chart-container" id="candlestickChart"></div>
+            </div>
+
+            <!-- Volume Chart -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">📊</span> VOLUME · VOLATILITY OVERLAY
+              </div>
+              <div class="chart-wrapper" id="volumeChartWrapper">
+                <canvas id="volumeChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Metrics & Feature Importance -->
+          <div class="stack">
+            <!-- Stock Metrics -->
+            <div class="card">
+              <div class="card-header">STOCK METRICS</div>
+              <div class="kv-list">
+                <div class="kv-row"><span class="kv-label">52W High</span><span class="kv-value">248.30</span></div>
+                <div class="kv-row"><span class="kv-label">52W Low</span><span class="kv-value">189.40</span></div>
+                <div class="kv-row"><span class="kv-label">Avg Volume</span><span class="kv-value">1.24M</span></div>
+                <div class="kv-row"><span class="kv-label">Market Cap</span><span class="kv-value">BDT 24.88</span></div>
+                <div class="kv-row"><span class="kv-label">P/E Ratio</span><span class="kv-value">18.4x</span></div>
+                <div class="kv-row"><span class="kv-label">Beta</span><span class="kv-value"><span class="text-red mono" style="font-size:9px; margin-right:4px;">HIGH</span> 1.24</span></div>
+                <div class="kv-row"><span class="kv-label">AI Regime</span><span class="kv-value"><span class="text-green">↑</span> BULL</span></div>
+              </div>
+            </div>
+
+            <!-- Why This Prediction -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">ⓘ</span> WHY THIS PREDICTION
+              </div>
+              <div id="featureImportanceList">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── VIEW 3: AI PREDICTION ─── -->
+      <section class="view" id="view-ai-prediction">
+        <!-- Forecast Hero Card -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header">
+            <span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — SQPHARMA
+          </div>
+          <div class="forecast-hero">
+            <div>
+              <div class="forecast-prices">
+                <div class="forecast-current">
+                  <span class="forecast-label">CURRENT</span>
+                  <span class="forecast-value">222.84</span>
+                </div>
+                <span class="forecast-arrow">→</span>
+                <div class="forecast-predicted">
+                  <span class="forecast-label">FORECAST</span>
+                  <span class="forecast-value green">236.66</span>
+                </div>
+                <span class="forecast-badge-expected">+6.2% EXPECTED</span>
+              </div>
+              <p class="forecast-desc">LSTM ensemble with drift-aware retraining projects upward movement based on momentum divergence, volume accumulation, and sector regime alignment. Model retrained 4h ago.</p>
+            </div>
+            <div class="gauge-group">
+              <div class="gauge">
+                <div class="gauge-circle">
+                  <svg viewBox="0 0 80 80">
+                    <circle class="track" cx="40" cy="40" r="34" />
+                    <circle class="fill" cx="40" cy="40" r="34" stroke="var(--accent-teal)"
+                      stroke-dasharray="213.6"
+                      stroke-dashoffset="27.8" />
+                  </svg>
+                  <span class="value-text">87</span>
+                </div>
+                <span class="gauge-label">AI Confidence</span>
+              </div>
+              <div class="gauge">
+                <div class="gauge-circle">
+                  <svg viewBox="0 0 80 80">
+                    <circle class="track" cx="40" cy="40" r="34" />
+                    <circle class="fill" cx="40" cy="40" r="34" stroke="var(--accent-amber)"
+                      stroke-dasharray="213.6"
+                      stroke-dashoffset="76.9" />
+                  </svg>
+                  <span class="value-text">64</span>
+                </div>
+                <span class="gauge-label">Drift Score</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- Scenario Simulation -->
+          <div class="card">
+            <div class="card-header">
+              <span class="icon">🔮</span> SCENARIO SIMULATION
+            </div>
+            <div class="chart-legend">
+              <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--accent-green);"></span> Optimistic</span>
+              <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--accent-cyan);"></span> Neutral</span>
+              <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--accent-red);"></span> Pessimistic</span>
+            </div>
+            <div class="chart-wrapper tall" id="scenarioChartWrapper">
+              <canvas id="scenarioChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Model Reasoning -->
+          <div class="card">
+            <div class="card-header">
+              <span class="icon">ⓘ</span> MODEL REASONING PANEL
+            </div>
+            <div class="reasoning-item">
+              <div class="reasoning-title green">📈 Trend Analysis</div>
+              <div class="reasoning-body">14-day momentum shows sustained upward pressure. EMA crossover confirmed at BDT 228.40. RSI at 62 — not yet overbought.</div>
+            </div>
+            <div class="reasoning-item">
+              <div class="reasoning-title amber">◎ Anomaly Detection</div>
+              <div class="reasoning-body">Volume spike detected on Jan 19 (+340% above 20-day avg). Unusual call option accumulation noted in derivatives market.</div>
+            </div>
+            <div class="reasoning-item">
+              <div class="reasoning-title cyan">↗ Drift Context</div>
+              <div class="reasoning-body">Market drift elevated but sector model shows pharma decoupling from broader DSE index. Sector alpha positive.</div>
+            </div>
+            <div class="reasoning-item">
+              <div class="reasoning-title red">⊘ Risk Factors</div>
+              <div class="reasoning-body">Approval cycle risk present. Current regulatory pipeline uncertain. Raw material cost dependency on import channels — BDT depreciation adds pressure.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── VIEW 4: DRIFT MONITOR ─── -->
+      <section class="view" id="view-drift-monitor">
+        <!-- Alert Banner -->
+        <div class="alert-banner" style="margin-bottom:20px;">
+          <div class="alert-title">
+            <span class="alert-icon">⚠</span> Structural Break Likely
+          </div>
+          <div class="alert-body">
+            Drift detection model flags high-confidence regime transition. Market instability index at critical level. Drift score 64.2 exceeds alert threshold of 60.0. Exercise caution on new entries.
+          </div>
+        </div>
+
+        <!-- 4 Metric Cards -->
+        <div class="grid-4col" style="margin-bottom:20px;">
+          <div class="metric-card">
+            <div class="metric-label">Drift Score</div>
+            <div class="metric-value">79.3</div>
+            <div class="metric-tag critical">CRITICAL</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Stability Idx</div>
+            <div class="metric-value">40/100</div>
+            <div class="metric-tag low">LOW</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Regime Age</div>
+            <div class="metric-value">14 days</div>
+            <div class="metric-tag volatile">VOLATILE</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Alert Level</div>
+            <div class="metric-value">LEVEL 3</div>
+            <div class="metric-tag volatile">OF 5</div>
+          </div>
+        </div>
+
+        <div class="grid-2col">
+          <!-- LEFT: Charts -->
+          <div class="stack">
+            <!-- Drift Score Timeline -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">📈</span> DRIFT SCORE TIMELINE
+              </div>
+              <div class="chart-wrapper tall" id="driftTimelineWrapper">
+                <canvas id="driftTimelineChart"></canvas>
+              </div>
+              <div class="threshold-label">---- Critical threshold (60.0)</div>
+            </div>
+
+            <!-- Return Distribution -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">📊</span> RETURN DISTRIBUTION — BEFORE vs AFTER REGIME SHIFT
+              </div>
+              <div class="chart-wrapper" id="returnDistWrapper">
+                <canvas id="returnDistChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT: Drift Pulse + Events -->
+          <div class="stack">
+            <!-- Drift Pulse -->
+            <div class="card">
+              <div class="card-header">DRIFT PULSE</div>
+              <div class="drift-pulse-display">
+                <div class="drift-pulse-value">79.3</div>
+                <div class="drift-pulse-label">SCORE · ACTIVE</div>
+              </div>
+            </div>
+
+            <!-- Warning Badges -->
+            <div class="warning-badge"><span class="wb-icon">⚠</span> High volatility regime detected</div>
+            <div class="warning-badge"><span class="wb-icon">⚡</span> Structural break likely in 48–72h</div>
+            <div class="warning-badge"><span class="wb-icon">📉</span> Correlation matrix breakdown detected</div>
+
+            <!-- Shift Events -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">⚡</span> SHIFT EVENTS
+              </div>
+              <div class="event-timeline">
+                <div class="event-item">
+                  <span class="event-dot red"></span>
+                  <div>
+                    <div class="event-date">Jan 08</div>
+                    <div class="event-text">Structural break in financial sector</div>
+                  </div>
+                </div>
+                <div class="event-item">
+                  <span class="event-dot amber"></span>
+                  <div>
+                    <div class="event-date">Jan 15</div>
+                    <div class="event-text">Volatility regime transition detected</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─── VIEW 5: MY PORTFOLIO ─── -->
+      <section class="view" id="view-my-portfolio">
+        <div class="grid-2col">
+          <!-- LEFT COLUMN -->
+          <div class="stack">
+            <!-- Portfolio Value Card -->
+            <div class="card">
+              <div class="card-header">TOTAL PORTFOLIO VALUE</div>
+              <div class="portfolio-value"><span class="currency">৳</span> 277,909</div>
+              <div class="portfolio-stats">
+                <span class="portfolio-stat"><span class="stat-label">Day P&L</span><span class="stat-value green">+৳ 4,280</span></span>
+                <span class="portfolio-stat"><span class="stat-label">Risk Score</span><span class="stat-value red">6.4/10</span></span>
+                <span class="portfolio-stat"><span class="stat-label">Sharpe</span><span class="stat-value">1.84</span></span>
+              </div>
+              <div class="portfolio-return">↗ +10.24% since inception</div>
+              <div class="chart-wrapper" id="portfolioChartWrapper">
+                <canvas id="portfolioChart"></canvas>
+              </div>
+              <div class="chart-legend mt-8">
+                <span class="chart-legend-item"><span class="chart-legend-line" style="background:var(--accent-teal);"></span> Portfolio</span>
+                <span class="chart-legend-item"><span class="chart-legend-dash" style="border-color:var(--text-muted);"></span> DSE-30 Benchmark</span>
+              </div>
+            </div>
+
+            <!-- AI Portfolio Recommendations -->
+            <div class="card">
+              <div class="card-header">
+                <span class="icon">ⓘ</span> AI PORTFOLIO RECOMMENDATIONS
+              </div>
+              <div class="rec-row">
+                <span class="badge-action badge-reduce">REDUCE</span>
+                <span class="rec-stock">BEXIMCO <span class="badge-risk-high" style="margin-left:4px;">HIGH</span></span>
+                <span class="rec-desc">Elevated drift in volatile regime — reduce exposure by 30%</span>
+              </div>
+              <div class="rec-row">
+                <span class="badge-action badge-hold">HOLD</span>
+                <span class="rec-stock">SQPHARMA <span class="badge-risk-low" style="margin-left:4px;">LOW</span></span>
+                <span class="rec-desc">Strong momentum — maintain current position through next cycle</span>
+              </div>
+              <div class="rec-row">
+                <span class="badge-action badge-watch">WATCH</span>
+                <span class="rec-stock">BRACBANK <span class="badge-risk-med" style="margin-left:4px;">MED</span></span>
+                <span class="rec-desc">Approaching key resistance at 64.80 — monitor for breakout</span>
+              </div>
+              <div class="rec-row">
+                <span class="badge-action badge-buy">BUY</span>
+                <span class="rec-stock">BSRMSTEEL</span>
+                <span class="rec-desc">Pre-trend buildup detected — consider 5–8% allocation</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- RIGHT COLUMN -->
+          <div class="stack">
+            <!-- Asset Allocation -->
+            <div class="card">
+              <div class="card-header">ASSET ALLOCATION</div>
+              <div class="donut-wrapper">
+                <div class="donut-canvas-wrapper">
+                  <canvas id="donutChart"></canvas>
+                </div>
+                <div class="donut-legend">
+                  <div class="donut-legend-item">
+                    <div class="donut-legend-left"><span class="donut-legend-dot" style="background:#14B8A6;"></span><span class="donut-legend-name">Pharma</span></div>
+                    <span class="donut-legend-value">35%</span>
+                  </div>
+                  <div class="donut-legend-item">
+                    <div class="donut-legend-left"><span class="donut-legend-dot" style="background:#A855F7;"></span><span class="donut-legend-name">Banking</span></div>
+                    <span class="donut-legend-value">25%</span>
+                  </div>
+                  <div class="donut-legend-item">
+                    <div class="donut-legend-left"><span class="donut-legend-dot" style="background:#F59E0B;"></span><span class="donut-legend-name">Industry</span></div>
+                    <span class="donut-legend-value">20%</span>
+                  </div>
+                  <div class="donut-legend-item">
+                    <div class="donut-legend-left"><span class="donut-legend-dot" style="background:#10B981;"></span><span class="donut-legend-name">Telecom</span></div>
+                    <span class="donut-legend-value">12%</span>
+                  </div>
+                  <div class="donut-legend-item">
+                    <div class="donut-legend-left"><span class="donut-legend-dot" style="background:#6B7280;"></span><span class="donut-legend-name">Others</span></div>
+                    <span class="donut-legend-value">8%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Risk Exposure -->
+            <div class="card">
+              <div class="card-header">RISK EXPOSURE</div>
+              <div class="risk-row">
+                <span class="risk-label">Overall Risk</span>
+                <div class="risk-bar-track"><div class="risk-bar-fill amber" style="width:64%;"></div></div>
+                <span class="risk-value amber">64</span>
+              </div>
+              <div class="risk-row">
+                <span class="risk-label">Market Risk</span>
+                <div class="risk-bar-track"><div class="risk-bar-fill red" style="width:72%;"></div></div>
+                <span class="risk-value red">72</span>
+              </div>
+              <div class="risk-row">
+                <span class="risk-label">Liquidity</span>
+                <div class="risk-bar-track"><div class="risk-bar-fill green" style="width:45%;"></div></div>
+                <span class="risk-value"></span>
+              </div>
+              <div class="risk-row">
+                <span class="risk-label">Sector Concentration</span>
+                <div class="risk-bar-track"><div class="risk-bar-fill amber" style="width:58%;"></div></div>
+                <span class="risk-value amber"></span>
+              </div>
+            </div>
+
+            <!-- Investor Profile -->
+            <div class="card">
+              <div class="investor-profile">
+                <div style="font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">INVESTOR PROFILE</div>
+                <div class="investor-type">BALANCED</div>
+                <div class="investor-desc">Moderate risk tolerance · Long horizon</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Application Script (ES module) -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════════════════════
+   QUANTEDGE — Chart-Specific Styles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* TradingView Lightweight Charts container */
+.tv-chart-container {
+  width: 100%;
+  height: 300px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+/* Chart.js overrides */
+.chart-wrapper {
+  position: relative;
+  width: 100%;
+  height: 260px;
+}
+
+.chart-wrapper.tall {
+  height: 320px;
+}
+
+.chart-wrapper.short {
+  height: 200px;
+}
+
+.chart-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Chart header row */
+.chart-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chart-ohlc-values {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.chart-ohlc-values span {
+  margin-right: 10px;
+}
+
+/* Custom tooltip */
+.chart-tooltip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Dual axis chart label */
+.dual-axis-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
