@@ -203,13 +203,20 @@ a {
   width: 60px;
 }
 
+/* Logo mark: hidden by default, shown when collapsed */
+.logo-mark {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-logo .brand,
 .sidebar.collapsed .sidebar-logo .tagline {
   display: none;
 }
 
-.sidebar.collapsed .sidebar-logo .brand {
-  font-size: 14px;
-  text-align: center;
+.sidebar.collapsed .logo-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar.collapsed .sidebar-header {
