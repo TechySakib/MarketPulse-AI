@@ -195,6 +195,66 @@ a {
   padding: 0;
   z-index: 20;
   overflow-y: auto;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Collapsed sidebar (desktop toggle) */
+.sidebar.collapsed {
+  width: 60px;
+}
+
+.sidebar.collapsed .sidebar-logo .tagline {
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-logo .brand {
+  font-size: 14px;
+  text-align: center;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 16px 0;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px 0;
+  border-left-color: transparent;
+}
+
+.sidebar.collapsed .nav-item.active {
+  border-left-color: transparent;
+  background: rgba(0, 212, 255, 0.08);
+}
+
+.sidebar.collapsed .nav-item span:not(.nav-icon) {
+  display: none;
+}
+
+.sidebar.collapsed .nav-item .nav-icon {
+  font-size: 18px;
+  width: auto;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.sidebar.collapsed .analyst-info {
+  display: none;
+}
+
+/* Main content adjusts when sidebar collapses */
+.app-layout {
+  transition: margin-left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-layout.sidebar-collapsed {
+  margin-left: 60px;
 }
 
 .sidebar-header {

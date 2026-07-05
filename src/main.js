@@ -113,6 +113,20 @@ function startClock() {
   }, 1000);
 }
 
+// ─── DESKTOP SIDEBAR COLLAPSE TOGGLE ────────────────────────────
+function setupSidebarToggle() {
+  const sidebar = document.getElementById('sidebar');
+  const toggleBtn = document.querySelector('.sidebar-toggle');
+  const appLayout = document.querySelector('.app-layout');
+
+  if (!sidebar || !toggleBtn || !appLayout) return;
+
+  toggleBtn.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    appLayout.classList.toggle('sidebar-collapsed');
+  });
+}
+
 // ─── MOBILE SIDEBAR TOGGLE ──────────────────────────────────────
 function setupMobileSidebar() {
   const sidebar = document.getElementById('sidebar');
@@ -154,6 +168,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize navigation
   setupNavigation();
+
+  // Initialize desktop sidebar collapse toggle
+  setupSidebarToggle();
 
   // Initialize mobile sidebar toggle
   setupMobileSidebar();
