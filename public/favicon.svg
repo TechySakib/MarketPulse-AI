@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="6" fill="#0A0F1E"/>
-  <text x="16" y="22" text-anchor="middle" font-family="sans-serif" font-weight="800" font-size="16" fill="#00D4FF">Q</text>
+  <path d="M6 22 L11 12 L16 18 L21 8 L26 14" stroke="#00D4FF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="26" cy="14" r="2.5" fill="#00D4FF"/>
 </svg>
