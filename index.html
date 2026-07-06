@@ -246,20 +246,29 @@
       <section class="view" id="view-stock-analysis">
         <!-- Stock Header -->
         <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:4px;">
-          <span class="stock-name">SQPHARMA</span>
+          <span class="stock-name" id="detailsStockName">SQURPHARMA</span>
           <div class="stock-badges">
-            <span class="badge badge-pharma">PHARMA</span>
+            <span class="badge badge-pharma" id="detailsStockSectorBadge">PHARMA</span>
             <span class="badge badge-dse">DSE</span>
           </div>
-          <span class="stock-price-large">222.84</span>
-          <span class="stock-change down">-3.10 (-1.37%)</span>
+          <span class="stock-price-large" id="detailsStockPrice">223.60</span>
+          <span class="stock-change up" id="detailsStockChange">+1.30 (+0.58%)</span>
+          
+          <!-- Search Dropdown Selector -->
+          <div style="display: flex; align-items: center; gap: 8px; margin-left: 8px;">
+            <label for="stockSelector" style="font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);">SELECT ASSET:</label>
+            <select id="stockSelector" style="background: #ffffff; border: 1px solid var(--border-default); color: var(--text-bright); padding: 4px 8px; border-radius: 4px; font-family: var(--font-display); font-size: 12px; font-weight: 500; cursor: pointer; outline: none;">
+              <option value="SQURPHARMA">SQURPHARMA (Square Pharmaceuticals)</option>
+            </select>
+          </div>
+
           <div class="time-tabs">
             <button class="time-tab">7D</button>
             <button class="time-tab active">30D</button>
             <button class="time-tab">ALL</button>
           </div>
         </div>
-        <div class="stock-subtitle">Square Pharmaceuticals Ltd · Dhaka Stock Exchange</div>
+        <div class="stock-subtitle" id="detailsStockSubtitle">Square Pharmaceuticals Ltd · Dhaka Stock Exchange</div>
 
         <div class="grid-2col">
           <!-- LEFT: Charts -->
@@ -271,10 +280,10 @@
                   <span class="icon">📊</span> OHLC CANDLESTICK
                 </div>
                 <div class="chart-ohlc-values">
-                  <span>O <strong>224.97</strong></span>
-                  <span>H <strong>226.18</strong></span>
-                  <span>L <strong>221.83</strong></span>
-                  <span>C <strong>222.84</strong></span>
+                  <span>O <strong id="ohlcOpen">222.90</strong></span>
+                  <span>H <strong id="ohlcHigh">224.40</strong></span>
+                  <span>L <strong id="ohlcLow">222.50</strong></span>
+                  <span>C <strong id="ohlcClose">223.60</strong></span>
                 </div>
               </div>
               <div class="chart-legend">
@@ -302,13 +311,13 @@
             <div class="card">
               <div class="card-header">STOCK METRICS</div>
               <div class="kv-list">
-                <div class="kv-row"><span class="kv-label">52W High</span><span class="kv-value">248.30</span></div>
-                <div class="kv-row"><span class="kv-label">52W Low</span><span class="kv-value">189.40</span></div>
-                <div class="kv-row"><span class="kv-label">Avg Volume</span><span class="kv-value">1.24M</span></div>
-                <div class="kv-row"><span class="kv-label">Market Cap</span><span class="kv-value">BDT 24.88</span></div>
-                <div class="kv-row"><span class="kv-label">P/E Ratio</span><span class="kv-value">18.4x</span></div>
-                <div class="kv-row"><span class="kv-label">Beta</span><span class="kv-value"><span class="text-red mono" style="font-size:9px; margin-right:4px;">HIGH</span> 1.24</span></div>
-                <div class="kv-row"><span class="kv-label">AI Regime</span><span class="kv-value"><span class="text-green">↑</span> BULL</span></div>
+                <div class="kv-row"><span class="kv-label">52W High</span><span class="kv-value" id="metric52WHigh">236.00</span></div>
+                <div class="kv-row"><span class="kv-label">52W Low</span><span class="kv-value" id="metric52WLow">198.00</span></div>
+                <div class="kv-row"><span class="kv-label">Avg Volume</span><span class="kv-value" id="metricAvgVolume">530,925</span></div>
+                <div class="kv-row"><span class="kv-label">Market Cap</span><span class="kv-value" id="metricMarketCap">197,058.06</span></div>
+                <div class="kv-row"><span class="kv-label">P/E Ratio</span><span class="kv-value" id="metricPeRatio">7.2</span></div>
+                <div class="kv-row"><span class="kv-label">Beta</span><span class="kv-value" id="metricBeta"><span class="text-red mono" style="font-size:9px; margin-right:4px;">HIGH</span> 1.24</span></div>
+                <div class="kv-row"><span class="kv-label">AI Regime</span><span class="kv-value" id="metricAiRegime"><span class="text-green">↑</span> BULL</span></div>
               </div>
             </div>
 
@@ -329,22 +338,22 @@
       <section class="view" id="view-ai-prediction">
         <!-- Forecast Hero Card -->
         <div class="card" style="margin-bottom:20px;">
-          <div class="card-header">
-            <span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — SQPHARMA
+          <div class="card-header" id="predictCardHeaderSymbol">
+            <span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — SQURPHARMA
           </div>
           <div class="forecast-hero">
             <div>
               <div class="forecast-prices">
                 <div class="forecast-current">
                   <span class="forecast-label">CURRENT</span>
-                  <span class="forecast-value">222.84</span>
+                  <span class="forecast-value" id="predictCurrentPrice">223.60</span>
                 </div>
                 <span class="forecast-arrow">→</span>
                 <div class="forecast-predicted">
                   <span class="forecast-label">FORECAST</span>
-                  <span class="forecast-value green">236.66</span>
+                  <span class="forecast-value green" id="predictForecastPrice">237.46</span>
                 </div>
-                <span class="forecast-badge-expected">+6.2% EXPECTED</span>
+                <span class="forecast-badge-expected" id="predictExpectedChange">+6.2% EXPECTED</span>
               </div>
               <p class="forecast-desc">LSTM ensemble with drift-aware retraining projects upward movement based on momentum divergence, volume accumulation, and sector regime alignment. Model retrained 4h ago.</p>
             </div>

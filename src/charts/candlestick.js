@@ -1,13 +1,14 @@
-/* ═══════════════════════════════════════════════════════════════
-   QUANTEDGE — Candlestick Chart (TradingView Lightweight Charts v5)
-   ═══════════════════════════════════════════════════════════════ */
-
 import { createChart, ColorType, LineStyle, CandlestickSeries, LineSeries, HistogramSeries } from 'lightweight-charts';
-import { candlestickData, aiForecastLine, volumeData } from '../data/mock-data.js';
+import { fetchStockHistory } from '../data/dse-service.js';
 
+/**
+ * Initializes the TradingView Lightweight Chart in the specified container
+ * @param {string} containerId The container DOM element ID
+ * @returns {Object} Chart instance details and series references
+ */
 export function initCandlestickChart(containerId) {
   const container = document.getElementById(containerId);
-  if (!container) return;
+  if (!container) return null;
 
   const chart = createChart(container, {
     width: container.clientWidth,
@@ -19,44 +20,42 @@ export function initCandlestickChart(containerId) {
       fontFamily: "'JetBrains Mono', monospace",
     },
     grid: {
-      vertLines: { color: 'rgba(26, 35, 64, 0.5)' },
-      horzLines: { color: 'rgba(26, 35, 64, 0.5)' },
+      vertLines: { color: 'rgba(26, 35, 64, 0.2)' },
+      horzLines: { color: 'rgba(26, 35, 64, 0.2)' },
     },
     crosshair: {
       mode: 0,
-      vertLine: { color: 'rgba(0, 212, 255, 0.3)', width: 1, style: LineStyle.Dashed },
-      horzLine: { color: 'rgba(0, 212, 255, 0.3)', width: 1, style: LineStyle.Dashed },
+      vertLine: { color: 'rgba(0, 102, 255, 0.3)', width: 1, style: LineStyle.Dashed },
+      horzLine: { color: 'rgba(0, 102, 255, 0.3)', width: 1, style: LineStyle.Dashed },
     },
     rightPriceScale: {
-      borderColor: '#1A2340',
+      borderColor: '#E4E4E7',
     },
     timeScale: {
-      borderColor: '#1A2340',
+      borderColor: '#E4E4E7',
       timeVisible: false,
     },
   });
 
-  // Candlestick series (v5 unified API)
+  // Candlestick series
   const candleSeries = chart.addSeries(CandlestickSeries, {
-    upColor: '#10B981',
-    downColor: '#EF4444',
-    borderUpColor: '#10B981',
-    borderDownColor: '#EF4444',
-    wickUpColor: '#10B981',
-    wickDownColor: '#EF4444',
+    upColor: '#059669',     // Emerald Mint
+    downColor: '#DC2626',   // Crimson Slate
+    borderUpColor: '#059669',
+    borderDownColor: '#DC2626',
+    wickUpColor: '#059669',
+    wickDownColor: '#DC2626',
   });
-  candleSeries.setData(candlestickData);
 
-  // AI Forecast line overlay (v5 unified API)
+  // AI Forecast line overlay
   const forecastSeries = chart.addSeries(LineSeries, {
-    color: '#00D4FF',
+    color: '#0066FF',       // Core Cobalt Blue
     lineWidth: 1.5,
     lineStyle: LineStyle.Dashed,
     crosshairMarkerVisible: false,
   });
-  forecastSeries.setData(aiForecastLine);
 
-  // Volume histogram (v5 unified API)
+  // Volume histogram
   const volSeries = chart.addSeries(HistogramSeries, {
     priceFormat: { type: 'volume' },
     priceScaleId: 'volume',
@@ -65,8 +64,6 @@ export function initCandlestickChart(containerId) {
   chart.priceScale('volume').applyOptions({
     scaleMargins: { top: 0.85, bottom: 0 },
   });
-
-  volSeries.setData(volumeData);
 
   // Fit content
   chart.timeScale().fitContent();
@@ -77,5 +74,57 @@ export function initCandlestickChart(containerId) {
   });
   ro.observe(container);
 
-  return chart;
+  return { chart, candleSeries, forecastSeries, volSeries };
+}
+
+/**
+ * Updates the candlestick chart with dynamic history data and synthesizes an AI forecast line
+ * @param {Object} chartInstances The references returned by initCandlestickChart
+ * @param {Array} historyData List of candle objects { time, open, high, low, close, volume }
+ */
+export function updateCandlestickChartData(chartInstances, historyData) {
+  if (!chartInstances || !historyData || historyData.length === 0) return;
+
+  const { candleSeries, forecastSeries, volSeries, chart } = chartInstances;
+
+  // 1. Set history candlesticks
+  candleSeries.setData(historyData);
+
+  // 2. Set volume histogram data
+  const volData = historyData.map(d => ({
+    time: d.time,
+    value: d.volume,
+    color: d.close >= d.open ? 'rgba(5, 150, 105, 0.4)' : 'rgba(220, 38, 38, 0.4)'
+  }));
+  volSeries.setData(volData);
+
+  // 3. Synthesize AI Forecast line (5 days projection)
+  const lastPoint = historyData[historyData.length - 1];
+  const lastPrice = lastPoint.close;
+  const lastTime = new Date(lastPoint.time);
+  
+  const forecastData = [];
+  // Connect seamlessly from history endpoint
+  forecastData.push({ time: lastPoint.time, value: lastPrice });
+  
+  let currDate = new Date(lastTime);
+  for (let j = 1; j <= 5; j++) {
+    currDate.setDate(currDate.getDate() + 1);
+    // Skip DSE weekends (Friday/Saturday)
+    while (currDate.getDay() === 5 || currDate.getDay() === 6) {
+      currDate.setDate(currDate.getDate() + 1);
+    }
+    const timeString = currDate.toISOString().split('T')[0];
+    
+    // Create a minor positive bias projection for demo/AI regime
+    const projectionPrice = parseFloat((lastPrice * (1 + j * 0.003 + (Math.random() - 0.3) * 0.004)).toFixed(2));
+    forecastData.push({
+      time: timeString,
+      value: projectionPrice
+    });
+  }
+  forecastSeries.setData(forecastData);
+
+  // Re-fit
+  chart.timeScale().fitContent();
 }

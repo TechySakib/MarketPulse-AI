@@ -182,3 +182,30 @@ export function initReturnDistChart(canvasId) {
     },
   });
 }
+
+export function updateVolumeChartData(chartInstance, historyData) {
+  if (!chartInstance || !historyData || historyData.length === 0) return;
+
+  const labels = historyData.map(d => {
+    const date = new Date(d.time);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getDate()}`;
+  });
+
+  const volumeValues = historyData.map(d => Math.round(d.volume / 1000));
+  const volColors = historyData.map(d => d.close >= d.open ? '#059669' : '#DC2626');
+  
+  const volatilityData = historyData.map(d => {
+    const range = d.high - d.low;
+    const pct = d.close > 0 ? (range / d.close) * 100 : 0.5;
+    return parseFloat(pct.toFixed(2));
+  });
+
+  chartInstance.data.labels = labels;
+  chartInstance.data.datasets[0].data = volumeValues;
+  chartInstance.data.datasets[0].backgroundColor = volColors.map(c => c + '99');
+  chartInstance.data.datasets[0].borderColor = volColors;
+  chartInstance.data.datasets[1].data = volatilityData;
+
+  chartInstance.update();
+}

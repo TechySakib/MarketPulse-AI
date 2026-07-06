@@ -200,3 +200,17 @@ export function initPortfolioChart(canvasId) {
     },
   });
 }
+
+export function updateScenarioChartData(chartInstance, currentPrice) {
+  if (!chartInstance || isNaN(currentPrice)) return;
+
+  const p = currentPrice;
+  chartInstance.data.datasets[0].data = [p, p * 1.01, p * 1.03, p * 1.05, p * 1.08, p * 1.11, p * 1.14, p * 1.17];
+  chartInstance.data.datasets[1].data = [p, p * 1.002, p * 1.005, p * 1.008, p * 1.01, p * 1.012, p * 1.015, p * 1.018];
+  chartInstance.data.datasets[2].data = [p, p * 0.99, p * 0.98, p * 0.97, p * 0.96, p * 0.95, p * 0.94, p * 0.93];
+
+  chartInstance.options.scales.y.min = Math.floor(p * 0.9);
+  chartInstance.options.scales.y.max = Math.ceil(p * 1.25);
+
+  chartInstance.update();
+}
