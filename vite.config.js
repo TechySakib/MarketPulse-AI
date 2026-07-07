@@ -202,18 +202,20 @@ export default defineConfig({
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
             const symbol = parsedUrl.query.symbol || 'SQURPHARMA';
+            const duration = parsedUrl.query.duration || '3';
+            const cacheKey = `${symbol}_${duration}`;
             
             // Check cache
             const now = Date.now();
-            if (cache.history[symbol] && cache.history[symbol].expiry > now) {
-              res.end(JSON.stringify(cache.history[symbol].data));
+            if (cache.history[cacheKey] && cache.history[cacheKey].expiry > now) {
+              res.end(JSON.stringify(cache.history[cacheKey].data));
               return;
             }
 
             try {
-              // Fetch 3 months of data (duration=3)
-              const priceHtml = await fetchDSEPage(`/php_graph/monthly_graph.php?inst=${encodeURIComponent(symbol)}&duration=3&type=price`);
-              const volHtml = await fetchDSEPage(`/php_graph/monthly_graph.php?inst=${encodeURIComponent(symbol)}&duration=3&type=vol`);
+              // Fetch data with selected duration
+              const priceHtml = await fetchDSEPage(`/php_graph/monthly_graph.php?inst=${encodeURIComponent(symbol)}&duration=${encodeURIComponent(duration)}&type=price`);
+              const volHtml = await fetchDSEPage(`/php_graph/monthly_graph.php?inst=${encodeURIComponent(symbol)}&duration=${encodeURIComponent(duration)}&type=vol`);
               
               const prices = parseGraphCSV(priceHtml);
               const volumes = parseGraphCSV(volHtml);
@@ -249,7 +251,7 @@ export default defineConfig({
               }
               
               // Save to cache
-              cache.history[symbol] = {
+              cache.history[cacheKey] = {
                 data: history,
                 expiry: now + HISTORY_CACHE_TTL
               };

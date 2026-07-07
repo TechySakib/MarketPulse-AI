@@ -15,6 +15,7 @@ import { fetchTickers, fetchStockMetrics, fetchStockHistory } from './data/dse-s
 let currentView = 'market-intelligence';
 const chartInstances = {};
 let activeStock = 'SQURPHARMA';
+let activeTimeframe = '30D';
 
 // ─── NAVIGATION ─────────────────────────────────────────────────
 function setupNavigation() {
@@ -120,7 +121,17 @@ function initViewCharts(viewId) {
 // ─── LOAD & UPDATE DSE ACTIVE STOCK ─────────────────────────────
 async function loadActiveCharts() {
   try {
-    const history = await fetchStockHistory(activeStock);
+    let duration = 3;
+    if (activeTimeframe === '7D' || activeTimeframe === '30D') {
+      duration = 1;
+    } else if (activeTimeframe === 'ALL') {
+      duration = 12;
+    }
+
+    let history = await fetchStockHistory(activeStock, duration);
+    if (activeTimeframe === '7D') {
+      history = history.slice(-7);
+    }
     
     // 1. Update lightweight candlestick chart if ready
     if (chartInstances.candlestick && history.length > 0) {
@@ -315,6 +326,19 @@ function setupMobileSidebar() {
   });
 }
 
+// ─── TIMEFRAME TABS ──────────────────────────────────────────────
+function setupTimeframeTabs() {
+  const tabs = document.querySelectorAll('.time-tab');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeTimeframe = tab.textContent.trim();
+      loadActiveCharts();
+    });
+  });
+}
+
 // ─── INIT ───────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   // Bind global select callback (used by ticker, heatmap, top picks)
@@ -329,6 +353,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize navigation
   setupNavigation();
+
+  // Initialize timeframe tabs
+  setupTimeframeTabs();
 
   // Initialize desktop sidebar collapse toggle
   setupSidebarToggle();

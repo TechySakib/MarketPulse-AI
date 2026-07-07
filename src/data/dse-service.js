@@ -54,10 +54,10 @@ export async function fetchStockMetrics(symbol) {
  * @param {string} symbol The stock ticker symbol
  * @returns {Promise<Array>} List of candles: { time, open, high, low, close, volume }
  */
-export async function fetchStockHistory(symbol) {
+export async function fetchStockHistory(symbol, duration = 3) {
   try {
     const normalizedSymbol = symbol === 'SQPHARMA' ? 'SQURPHARMA' : symbol;
-    const res = await fetch(`/api/dse/history?symbol=${encodeURIComponent(normalizedSymbol)}`);
+    const res = await fetch(`/api/dse/history?symbol=${encodeURIComponent(normalizedSymbol)}&duration=${duration}`);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     const data = await res.json();
     if (data.error) throw new Error(data.error);
