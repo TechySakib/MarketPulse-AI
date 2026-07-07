@@ -182,7 +182,8 @@ export default defineConfig({
                 volume: extractTableValue(html, "Day's Volume (Nos.)") || '0',
                 marketCap: extractTableValue(html, "Market Capitalization (mn)") || '0.00',
                 sector: extractTableValue(html, "Sector") || 'Unknown',
-                pe: extractPE(html) || 'N/A'
+                pe: extractPE(html) || 'N/A',
+                lastUpdate: extractTableValue(html, 'Last Update') || 'N/A'
               };
               
               // Save to cache

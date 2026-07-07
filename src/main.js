@@ -168,7 +168,10 @@ async function loadStockData(symbol) {
     if (priceEl) priceEl.textContent = metrics.price;
     
     const subtitleEl = document.getElementById('detailsStockSubtitle');
-    if (subtitleEl) subtitleEl.textContent = `${symbol} Ltd · Dhaka Stock Exchange`;
+    if (subtitleEl) {
+      const updateStr = metrics.lastUpdate ? ` · Last Update: ${metrics.lastUpdate}` : '';
+      subtitleEl.textContent = `${symbol} Ltd · Dhaka Stock Exchange${updateStr}`;
+    }
 
     const sectorBadge = document.getElementById('detailsStockSectorBadge');
     if (sectorBadge) {

@@ -43,7 +43,8 @@ export async function fetchStockMetrics(symbol) {
       volume: stockDetail.metrics['Avg Volume'],
       marketCap: stockDetail.metrics['Market Cap'].replace('BDT ', ''),
       sector: stockDetail.sector,
-      pe: stockDetail.metrics['P/E Ratio'].replace('x', '')
+      pe: stockDetail.metrics['P/E Ratio'].replace('x', ''),
+      lastUpdate: '2:40 PM'
     };
   }
 }
