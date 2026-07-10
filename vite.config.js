@@ -263,12 +263,20 @@ export default defineConfig({
               res.end(JSON.stringify({ error: err.message }));
             }
           }
-          else if (pathname === '/api/predict') {
+          else if (
+            pathname === '/api/predict' ||
+            pathname === '/api/features' ||
+            pathname === '/api/confidence' ||
+            pathname === '/api/drift' ||
+            pathname === '/api/market/regime' ||
+            pathname === '/api/portfolio'
+          ) {
             res.setHeader('Content-Type', 'application/json');
             res.setHeader('Access-Control-Allow-Origin', '*');
-            const symbol = parsedUrl.query.symbol || 'SQURPHARMA';
+            const queryStr = req.url.split('?')[1] || '';
+            const targetUrl = `http://localhost:5000${pathname}${queryStr ? '?' + queryStr : ''}`;
             
-            http.get(`http://localhost:5000/api/predict?symbol=${encodeURIComponent(symbol)}`, (pythonRes) => {
+            http.get(targetUrl, (pythonRes) => {
               let data = '';
               pythonRes.on('data', (chunk) => { data += chunk; });
               pythonRes.on('end', () => {

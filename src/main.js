@@ -8,7 +8,13 @@ import { initHeatmap, initTopPicks, initFeatureImportance } from './components/h
 import { initCandlestickChart, updateCandlestickChartData } from './charts/candlestick.js';
 import { initScenarioChart, initDriftTimelineChart, initPortfolioChart, updateScenarioChartData } from './charts/line-charts.js';
 import { initVolumeChart, initDonutChart, initReturnDistChart, updateVolumeChartData } from './charts/other-charts.js';
-import { narratorMessages } from './data/mock-data.js';
+const narratorMessages = {
+  'market-intelligence': 'SQPHARMA showing institutional accumulation — AI confidence: 87% for next-day upside',
+  'stock-analysis': 'Correlation breakdown between pharma and industrials flagged in last 48h window',
+  'ai-prediction': 'Correlation breakdown between pharma and industrials flagged in last 48h window',
+  'drift-monitor': 'Pre-trend buildup in steel manufacturing stocks — monitor volume surge closely',
+  'my-portfolio': 'Market transitioning into uncertainty phase — volatility index elevated 34% above baseline',
+};
 import { fetchTickers, fetchStockMetrics, fetchStockHistory } from './data/dse-service.js';
 
 // ─── STATE ──────────────────────────────────────────────────────
@@ -48,6 +54,15 @@ function setupNavigation() {
       initViewCharts(viewId);
 
       currentView = viewId;
+
+      // Trigger dynamic load of backend data for view
+      if (viewId === 'market-intelligence') {
+        loadMarketIntelligence();
+      } else if (viewId === 'drift-monitor') {
+        loadDriftMonitor(activeStock);
+      } else if (viewId === 'my-portfolio') {
+        loadPortfolio();
+      }
     });
   });
 }
@@ -87,7 +102,7 @@ function initViewCharts(viewId) {
         loadActiveCharts();
       }
       if (!chartInstances.featureImportance) {
-        initFeatureImportance();
+        initFeatureImportance(activeStock);
         chartInstances.featureImportance = true;
       }
       break;
@@ -275,6 +290,14 @@ async function loadStockData(symbol) {
 
     // 5. Fetch and update chart historical vectors
     await loadActiveCharts();
+
+    // Update feature importance dynamically
+    initFeatureImportance(symbol);
+
+    // If drift monitor is active, update it
+    if (currentView === 'drift-monitor') {
+      loadDriftMonitor(symbol);
+    }
     
     // 6. Update narrator state
     updateNarrator(currentView);
@@ -360,6 +383,246 @@ function setupMobileSidebar() {
   });
 }
 
+async function loadMarketIntelligence() {
+  try {
+    const res = await fetch('/api/market/regime');
+    const data = await res.json();
+    
+    // Update Drift Score & Stability in header
+    const driftScoreEl = document.querySelector('#view-market-intelligence .card-header span[style*="color:var(--accent-amber)"]');
+    if (driftScoreEl) driftScoreEl.textContent = data.driftScore;
+    
+    const stabilityEl = document.querySelector('#view-market-intelligence .card-header span[style*="color:var(--text-bright)"]');
+    if (stabilityEl) stabilityEl.textContent = data.stabilityIdx;
+    
+    // Update Status, Label, Description
+    const statusEl = document.querySelector('#view-market-intelligence div[style*="font-weight:800"]');
+    if (statusEl) statusEl.textContent = data.status;
+    
+    const labelEl = document.querySelector('#view-market-intelligence div[style*="color:var(--text-muted)"]');
+    if (labelEl) labelEl.textContent = data.label;
+    
+    const descEl = document.querySelector('#view-market-intelligence p[style*="margin-top:10px"]');
+    if (descEl) descEl.textContent = data.description;
+    
+    const alertEl = document.querySelector('#view-market-intelligence span[style*="color:var(--accent-amber); font-family:var(--font-mono)"]');
+    if (alertEl) alertEl.textContent = data.status === 'VOLATILE' ? 'HIGH ALERT' : 'NORMAL STATE';
+    
+    // Update scale segments active class
+    const segments = document.querySelectorAll('#view-market-intelligence .regime-scale-segment');
+    segments.forEach(seg => {
+      seg.classList.remove('active');
+      if (seg.textContent.trim() === data.status) {
+        seg.classList.add('active');
+      }
+    });
+    
+    // Update Market Weather
+    const wIcon = document.querySelector('.weather-icon');
+    if (wIcon) wIcon.textContent = data.marketWeather.icon;
+    
+    const wLabel = document.querySelector('.weather-label');
+    if (wLabel) wLabel.textContent = data.marketWeather.label;
+    
+    const wDesc = document.querySelector('.weather-desc');
+    if (wDesc) wDesc.textContent = data.marketWeather.description;
+    
+    const cells = document.querySelectorAll('.weather-cell-value');
+    if (cells.length >= 4) {
+      cells[0].textContent = data.marketWeather.pressure;
+      cells[1].textContent = data.marketWeather.windSpeed;
+      cells[2].textContent = data.marketWeather.visibility;
+      cells[3].textContent = data.marketWeather.humidity;
+    }
+    
+    // Update Regime Events list
+    const timeline = document.querySelector('#view-market-intelligence .event-timeline');
+    if (timeline) {
+      timeline.innerHTML = data.regimeEvents.map(ev => `
+        <div class="event-item">
+          <span class="event-dot ${ev.color}"></span>
+          <div>
+            <div class="event-date">${ev.date}</div>
+            <div class="event-text">${ev.text}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  } catch (err) {
+    console.error('Failed to load Market Intelligence details:', err);
+  }
+}
+
+async function loadDriftMonitor(symbol) {
+  try {
+    const res = await fetch(`/api/drift?symbol=${symbol}`);
+    const data = await res.json();
+    
+    // Update Alert Banner
+    const bannerTitle = document.querySelector('.alert-title');
+    if (bannerTitle) bannerTitle.innerHTML = `<span class="alert-icon">⚠</span> ${data.alertTitle}`;
+    
+    const bannerBody = document.querySelector('.alert-body');
+    if (bannerBody) bannerBody.textContent = data.alertBody;
+    
+    // Update 4 metrics cards
+    const metricCards = document.querySelectorAll('#view-drift-monitor .metric-card');
+    if (metricCards.length >= 4) {
+      metricCards[0].querySelector('.metric-value').textContent = data.driftScore.value;
+      const tag0 = metricCards[0].querySelector('.metric-tag');
+      tag0.textContent = data.driftScore.tag;
+      tag0.className = `metric-tag ${data.driftScore.tagClass}`;
+      
+      metricCards[1].querySelector('.metric-value').textContent = data.stabilityIdx.value;
+      const tag1 = metricCards[1].querySelector('.metric-tag');
+      tag1.textContent = data.stabilityIdx.tag;
+      tag1.className = `metric-tag ${data.stabilityIdx.tagClass}`;
+      
+      metricCards[2].querySelector('.metric-value').textContent = data.regimeAge.value;
+      const tag2 = metricCards[2].querySelector('.metric-tag');
+      tag2.textContent = data.regimeAge.tag;
+      tag2.className = `metric-tag ${data.regimeAge.tagClass}`;
+      
+      metricCards[3].querySelector('.metric-value').textContent = data.alertLevel.value;
+      const tag3 = metricCards[3].querySelector('.metric-tag');
+      tag3.textContent = data.alertLevel.tag;
+      tag3.className = `metric-tag ${data.alertLevel.tagClass}`;
+    }
+    
+    // Update Drift Pulse
+    const pulseVal = document.querySelector('.drift-pulse-value');
+    if (pulseVal) pulseVal.textContent = data.driftScore.value;
+    
+    // Update Warning Badges
+    const warningBadges = document.querySelectorAll('#view-drift-monitor .warning-badge');
+    warningBadges.forEach((badge, idx) => {
+      if (data.warnings && data.warnings[idx]) {
+        badge.style.display = 'flex';
+        badge.innerHTML = `<span class="wb-icon">${data.warnings[idx].icon}</span> ${data.warnings[idx].text}`;
+      } else {
+        badge.style.display = 'none';
+      }
+    });
+    
+    // Update Shift Events
+    const eventsTimeline = document.querySelector('#view-drift-monitor .event-timeline');
+    if (eventsTimeline) {
+      eventsTimeline.innerHTML = data.warnings.filter(w => w.text.includes('Likely') || w.text.includes('regime')).map(w => `
+        <div class="event-item">
+          <span class="event-dot red"></span>
+          <div>
+            <div class="event-date">LIVE</div>
+            <div class="event-text">${w.text}</div>
+          </div>
+        </div>
+      `).join('') || `
+        <div class="event-item">
+          <span class="event-dot green"></span>
+          <div>
+            <div class="event-date">NOW</div>
+            <div class="event-text">System operating normally</div>
+          </div>
+        </div>
+      `;
+    }
+    
+    // Update charts if initialized
+    if (chartInstances.driftTimeline) {
+      chartInstances.driftTimeline.data.labels = data.driftTimelineLabels;
+      chartInstances.driftTimeline.data.datasets[0].data = data.driftTimelineValues;
+      chartInstances.driftTimeline.update();
+    }
+    
+    if (chartInstances.returnDist) {
+      chartInstances.returnDist.data.labels = data.returnDistLabels;
+      chartInstances.returnDist.data.datasets[0].data = data.returnDistBefore;
+      chartInstances.returnDist.data.datasets[1].data = data.returnDistAfter;
+      chartInstances.returnDist.update();
+    }
+  } catch (err) {
+    console.error('Failed to load Drift Monitor details:', err);
+  }
+}
+
+async function loadPortfolio() {
+  try {
+    const res = await fetch('/api/portfolio');
+    const data = await res.json();
+    
+    // Update Portfolio text metrics
+    const valueHeader = document.querySelector('#view-my-portfolio .card-header');
+    if (valueHeader) valueHeader.innerHTML = `TOTAL PORTFOLIO · <span style="font-family:var(--font-display); font-size:24px; font-weight:800; color:var(--text-bright); margin-left:10px;">৳${data.totalValue}</span> <span class="stock-change ${data.dayPnl.includes('+') ? 'up' : 'down'}" style="margin-left:10px; font-size:12px;">${data.dayPnl} Today</span>`;
+    
+    // Investor Profile / Sharpe card values
+    const investorProfile = document.querySelector('.investor-profile');
+    if (investorProfile) {
+      investorProfile.innerHTML = `
+        <div style="font-family:var(--font-mono); font-size:9px; letter-spacing:0.1em; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">PORTFOLIO ANALYTICS</div>
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <span class="investor-type" style="font-size:18px;">SHARPE: ${data.sharpe}</span>
+          <span style="font-size:11px; color:var(--text-muted);">Risk: ${data.riskScore}</span>
+        </div>
+        <div class="investor-desc">${data.returnPct}</div>
+      `;
+    }
+    
+    // Recommendations
+    const recCard = document.querySelector('#view-my-portfolio .card:has(.rec-row)');
+    if (recCard) {
+      const rows = data.portfolioRecommendations.map(rec => `
+        <div class="rec-row">
+          <span class="badge-action ${rec.actionClass}">${rec.action}</span>
+          <span class="rec-stock">${rec.stock} ${rec.risk ? `<span class="${rec.riskClass}" style="margin-left:4px;">${rec.risk}</span>` : ''}</span>
+          <span class="rec-desc">${rec.desc}</span>
+        </div>
+      `).join('');
+      recCard.innerHTML = `<div class="card-header"><span class="icon">ⓘ</span> AI PORTFOLIO RECOMMENDATIONS</div>${rows}`;
+    }
+    
+    // Asset Allocation Doughnut legend
+    const legend = document.querySelector('.donut-legend');
+    if (legend) {
+      legend.innerHTML = data.assetAllocation.map(alloc => `
+        <div class="donut-legend-item">
+          <div class="donut-legend-left"><span class="donut-legend-dot" style="background:${alloc.color};"></span><span class="donut-legend-name">${alloc.name}</span></div>
+          <span class="donut-legend-value">${alloc.pct}%</span>
+        </div>
+      `).join('');
+    }
+    
+    // Risk Exposure progress bars
+    const riskRows = document.querySelectorAll('#view-my-portfolio .risk-row');
+    data.riskExposure.forEach((item, idx) => {
+      if (riskRows[idx]) {
+        riskRows[idx].querySelector('.risk-label').textContent = item.label;
+        const fill = riskRows[idx].querySelector('.risk-bar-fill');
+        fill.style.width = `${item.value}%`;
+        fill.className = `risk-bar-fill ${item.barClass}`;
+        const val = riskRows[idx].querySelector('.risk-value');
+        val.textContent = item.value;
+        val.className = `risk-value ${item.barClass}`;
+      }
+    });
+    
+    // Update Portfolio Charts if initialized
+    if (chartInstances.portfolio) {
+      chartInstances.portfolio.data.labels = data.portfolioChartLabels;
+      chartInstances.portfolio.data.datasets[0].data = data.portfolioChartValues;
+      chartInstances.portfolio.data.datasets[1].data = data.benchmarkValues;
+      chartInstances.portfolio.update();
+    }
+    
+    if (chartInstances.donut) {
+      chartInstances.donut.data.labels = data.assetAllocation.map(a => a.name);
+      chartInstances.donut.data.datasets[0].data = data.assetAllocation.map(a => a.pct);
+      chartInstances.donut.data.datasets[0].backgroundColor = data.assetAllocation.map(a => a.color);
+      chartInstances.donut.update();
+    }
+  } catch (err) {
+    console.error('Failed to load portfolio details:', err);
+  }
+}
+
 // ─── TIMEFRAME TABS ──────────────────────────────────────────────
 function setupTimeframeTabs() {
   const tabs = document.querySelectorAll('.time-tab');
@@ -403,6 +666,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize Market Intelligence components (default view)
   initTopPicks();
   initHeatmap();
+  loadMarketIntelligence();
 
   // Load the initial stock data
   loadStockData(activeStock);

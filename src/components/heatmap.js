@@ -1,5 +1,4 @@
 import { fetchTickers } from '../data/dse-service.js';
-import { featureImportance } from '../data/mock-data.js';
 
 // Color scale: low = deep navy, high = bright teal
 function getHeatColor(value) {
@@ -40,23 +39,29 @@ export async function initHeatmap() {
     return pctB - pctA;
   });
 
-  const top5 = sorted.slice(0, 5);
+  let heatmapData = [];
+  try {
+    const res = await fetch('/api/confidence');
+    heatmapData = await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch live confidence heatmap, using client fallback:', err);
+    // client fallback based on tickers
+    const top5 = sorted.slice(0, 5);
+    heatmapData = top5.map(stock => {
+      const pct = parseFloat(stock.changePct || stock.change) || 0;
+      const base = Math.min(95, Math.max(60, Math.round(78 + pct * 2)));
+      return {
+        stock: stock.symbol,
+        momentum: Math.min(99, Math.round(base + 8)),
+        volume: Math.min(99, Math.round(base + (pct > 2 ? 10 : 2))),
+        sentiment: Math.min(99, Math.round(base - 5)),
+        trend: Math.min(99, Math.round(base + 6)),
+        regime: Math.min(99, Math.round(base - 2))
+      };
+    });
+  }
+
   const columns = ['Momentum', 'Volume', 'Sentiment', 'Trend', 'Regime'];
-
-  // Generate realistic decomposition scores based on actual gain
-  const heatmapData = top5.map(stock => {
-    const pct = parseFloat(stock.changePct || stock.change) || 0;
-    const base = Math.min(95, Math.max(60, Math.round(78 + pct * 2)));
-    return {
-      stock: stock.symbol,
-      momentum: Math.min(99, Math.round(base + 8)),
-      volume: Math.min(99, Math.round(base + (pct > 2 ? 10 : 2))),
-      sentiment: Math.min(99, Math.round(base - 5)),
-      trend: Math.min(99, Math.round(base + 6)),
-      regime: Math.min(99, Math.round(base - 2))
-    };
-  });
-
   let html = '<table class="heatmap-table"><thead><tr><th></th>';
   columns.forEach(col => { html += `<th>${col}</th>`; });
   html += '</tr></thead><tbody>';
@@ -130,22 +135,50 @@ export async function initTopPicks() {
 }
 
 // ─── FEATURE IMPORTANCE LIST ────────────────────────────────────
-export function initFeatureImportance() {
+export async function initFeatureImportance(symbol = 'SQURPHARMA') {
   const container = document.getElementById('featureImportanceList');
   if (!container) return;
 
   let html = '';
-  featureImportance.forEach(item => {
-    html += `
-      <div class="progress-row">
-        <span class="progress-label">${item.label}</span>
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill ${item.color}" style="width:${item.value}%;"></div>
+  try {
+    const res = await fetch(`/api/features?symbol=${symbol}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    
+    data.forEach(item => {
+      html += `
+        <div class="progress-row">
+          <span class="progress-label">${item.label}</span>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill ${item.color}" style="width:${item.value}%;"></div>
+          </div>
+          <span class="progress-value ${item.color}">${item.value}%</span>
         </div>
-        <span class="progress-value ${item.color}">${item.value}%</span>
-      </div>
-    `;
-  });
+      `;
+    });
+  } catch (err) {
+    console.error('Failed to fetch dynamic features:', err);
+    // Static fallback if API fails
+    const fallback = [
+      { label: 'Price Momentum (14D)', value: 92, color: 'green' },
+      { label: 'Volume Anomaly Score', value: 78, color: 'cyan' },
+      { label: 'Regime State Vector', value: 84, color: 'green' },
+      { label: 'Drift Coefficient', value: 71, color: 'amber' },
+      { label: 'Sector Correlation', value: 65, color: 'cyan' },
+      { label: 'Sentiment Index', value: 58, color: 'amber' },
+    ];
+    fallback.forEach(item => {
+      html += `
+        <div class="progress-row">
+          <span class="progress-label">${item.label}</span>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill ${item.color}" style="width:${item.value}%;"></div>
+          </div>
+          <span class="progress-value ${item.color}">${item.value}%</span>
+        </div>
+      `;
+    });
+  }
 
   container.innerHTML = html;
 }
