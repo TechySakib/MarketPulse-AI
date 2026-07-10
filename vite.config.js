@@ -269,23 +269,30 @@ export default defineConfig({
             pathname === '/api/confidence' ||
             pathname === '/api/drift' ||
             pathname === '/api/market/regime' ||
-            pathname === '/api/portfolio'
+            pathname.startsWith('/api/portfolio')
           ) {
-            res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Access-Control-Allow-Origin', '*');
-            const queryStr = req.url.split('?')[1] || '';
-            const targetUrl = `http://localhost:5000${pathname}${queryStr ? '?' + queryStr : ''}`;
+            const options = {
+              hostname: 'localhost',
+              port: 5000,
+              path: req.url,
+              method: req.method,
+              headers: {
+                ...req.headers,
+                host: 'localhost:5000'
+              }
+            };
             
-            http.get(targetUrl, (pythonRes) => {
-              let data = '';
-              pythonRes.on('data', (chunk) => { data += chunk; });
-              pythonRes.on('end', () => {
-                res.end(data);
-              });
-            }).on('error', (err) => {
+            const proxyReq = http.request(options, (pythonRes) => {
+              res.writeHead(pythonRes.statusCode, pythonRes.headers);
+              pythonRes.pipe(res);
+            });
+            
+            proxyReq.on('error', (err) => {
               res.statusCode = 500;
               res.end(JSON.stringify({ error: `Python prediction server error: ${err.message}` }));
             });
+            
+            req.pipe(proxyReq);
           }
           else {
             next();

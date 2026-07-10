@@ -19,6 +19,48 @@ MODELS_BASE_DIR = r"G:\MarketPulse-AI\DSE_PatchTST_Adjusted_Models"
 MODEL_CACHE = {}
 SCALER_CACHE = {}
 
+SCRAPED_CACHE_FILE = r"G:\MarketPulse-AI\scraped_cache.json"
+PORTFOLIO_FILE = r"G:\MarketPulse-AI\portfolio.json"
+
+def load_scraper_cache():
+    if os.path.exists(SCRAPED_CACHE_FILE):
+        try:
+            with open(SCRAPED_CACHE_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[Cache Storage] Error loading scraper cache: {e}")
+    return {}
+
+def save_scraper_cache(cache_data):
+    try:
+        with open(SCRAPED_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, indent=2)
+    except Exception as e:
+        print(f"[Cache Storage] Error saving scraper cache: {e}")
+
+def load_portfolio():
+    if os.path.exists(PORTFOLIO_FILE):
+        try:
+            with open(PORTFOLIO_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[Portfolio Storage] Error loading portfolio: {e}")
+    return {
+        "SQURPHARMA": 500,
+        "BRACBANK": 1000,
+        "RENATA": 300,
+        "BEXIMCO": 800
+    }
+
+def save_portfolio(data):
+    try:
+        with open(PORTFOLIO_FILE, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        return True
+    except Exception as e:
+        print(f"[Portfolio Storage] Error saving portfolio: {e}")
+        return False
+
 class PatchTST(nn.Module):
     def __init__(self, seq_len=60, n_features=11, patch_len=12, stride=6, d_model=128, n_heads=4, num_layers=3, dropout=0.2):
         super().__init__()
@@ -65,7 +107,6 @@ def get_model_and_scaler(symbol):
     if symbol in MODEL_CACHE:
         return MODEL_CACHE[symbol], SCALER_CACHE[symbol]
         
-    # Standard normalization of symbol names
     normalized_symbol = symbol.strip().upper()
     if normalized_symbol == 'SQPHARMA':
         normalized_symbol = 'SQURPHARMA'
@@ -76,7 +117,6 @@ def get_model_and_scaler(symbol):
         print(f"[Model Loader] Directory not found for: {normalized_symbol}")
         return None, None
         
-    # Locate weights and scaler pickle
     pt_path = os.path.join(model_dir, f"{normalized_symbol}.pt")
     pkl_path = os.path.join(model_dir, f"{normalized_symbol}_scaler.pkl")
     
@@ -85,10 +125,7 @@ def get_model_and_scaler(symbol):
         return None, None
         
     try:
-        # Load scaler
         scaler = joblib.load(pkl_path)
-        
-        # Load model checkpoint
         checkpoint = torch.load(pt_path, map_location='cpu')
         
         model = PatchTST(
@@ -104,7 +141,6 @@ def get_model_and_scaler(symbol):
         model.load_state_dict(checkpoint['model_state_dict'])
         model.eval()
         
-        # Save to global cache
         MODEL_CACHE[symbol] = model
         SCALER_CACHE[symbol] = scaler
         
@@ -116,46 +152,40 @@ def get_model_and_scaler(symbol):
 
 def fetch_history_from_scraper(symbol):
     """
-    Scrapes historical data directly from DSE to avoid deadlocks.
-    Falls back to mock-data.js if DSE is unreachable.
+    Scrapes historical data directly from DSE.
+    If scraping fails, returns cached last-known real data and its timestamp.
     """
     import ssl
     import re
-    import random
+    import datetime
     
-    # Normalize symbol
     normalized_symbol = symbol.strip().upper()
     if normalized_symbol == 'SQPHARMA':
         normalized_symbol = 'SQURPHARMA'
         
     print(f"[Scraper] Fetching history for {symbol} (Normalized: {normalized_symbol}) directly from DSE...")
     
-    # Try scraping from DSE directly
     try:
         ctx = ssl._create_unverified_context()
-        # Fetch Price Graph
         price_url = f"https://www.dsebd.org/php_graph/monthly_graph.php?inst={normalized_symbol}&duration=12&type=price"
         req = urllib.request.Request(price_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=ctx, timeout=6) as response:
             price_html = response.read().decode('utf-8', errors='ignore')
             
-        # Fetch Volume Graph
         vol_url = f"https://www.dsebd.org/php_graph/monthly_graph.php?inst={normalized_symbol}&duration=12&type=vol"
         req = urllib.request.Request(vol_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, context=ctx, timeout=6) as response:
             vol_html = response.read().decode('utf-8', errors='ignore')
             
-        # Parse matches: "YYYY-MM-DD,value\n"
         pattern = r'"(\d{4}-\d{2}-\d{2}),([\d.]+)\\n"'
         prices = [{"date": d, "value": float(v)} for d, v in re.findall(pattern, price_html)]
         volumes = [{"date": d, "value": float(v)} for d, v in re.findall(pattern, vol_html)]
         
-        if prices and len(prices) >= 20:
+        if prices:
             vol_map = {v['date']: v['value'] for v in volumes}
             history = []
-            random.seed(42)
-            
-            for i, p in enumerate(prices):
+            for i in range(len(prices)):
+                p = prices[i]
                 close = p['value']
                 prev_close = prices[i-1]['value'] if i > 0 else close
                 open_val = prev_close
@@ -164,8 +194,9 @@ def fetch_history_from_scraper(symbol):
                 min_oc = min(open_val, close)
                 spread = close * 0.008
                 
-                high = round(max_oc + spread * (0.3 + random.random() * 0.7), 2)
-                low = round(min_oc - spread * (0.3 + random.random() * 0.7), 2)
+                seed_val = sum(ord(c) for c in p['date'])
+                high = round(max_oc + spread * (0.3 + (seed_val % 7) / 10.0), 2)
+                low = round(min_oc - spread * (0.3 + (seed_val % 5) / 10.0), 2)
                 volume = float(vol_map.get(p['date'], 100000.0))
                 
                 history.append({
@@ -176,30 +207,28 @@ def fetch_history_from_scraper(symbol):
                     "close": round(close, 2),
                     "volume": volume
                 })
+            
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            cache_data = load_scraper_cache()
+            cache_data[normalized_symbol] = {
+                "data": history,
+                "timestamp": timestamp
+            }
+            save_scraper_cache(cache_data)
+            
             print(f"[Scraper] Successfully scraped {len(history)} candles from DSE for {symbol}")
-            return history
+            return history, "Live"
     except Exception as e:
         print(f"[Scraper] Direct DSE scraping failed for {symbol}: {e}")
-
-    # Fallback to local static candles
-    print(f"[Scraper] Falling back to local static candles for {symbol}")
-    fallback_dates = [
-        '2025-01-16', '2025-01-17', '2025-01-19', '2025-01-20', '2025-01-21', 
-        '2025-01-22', '2025-01-23', '2025-01-26', '2025-01-27', '2025-01-28', 
-        '2025-01-29', '2025-01-30'
-    ]
-    fallback_close = 222.84
-    candles = []
-    for i, date in enumerate(fallback_dates):
-        candles.append({
-            "time": date,
-            "open": fallback_close - 2.0 + (i % 3),
-            "high": fallback_close + 3.0 - (i % 2),
-            "low": fallback_close - 4.0 + (i % 4),
-            "close": fallback_close - 1.0 + (i % 2),
-            "volume": 1000000.0
-        })
-    return candles
+        
+    cache_data = load_scraper_cache()
+    if normalized_symbol in cache_data:
+        entry = cache_data[normalized_symbol]
+        print(f"[Scraper] Returning cached data for {normalized_symbol} (last scraped: {entry['timestamp']})")
+        return entry['data'], entry['timestamp']
+        
+    print(f"[Scraper] No cached data found for {normalized_symbol}. Using blank list.")
+    return [], None
 
 def compute_row_features(df):
     """
@@ -208,7 +237,7 @@ def compute_row_features(df):
     df = df.copy()
     
     # 1. log_return
-    df['log_return'] = np.log(df['close'] / df['close'].shift(1))
+    df['log_return'] = np.log(df['close'] / (df['close'].shift(1) + 1e-8))
     # 2. return
     df['return'] = df['close'].pct_change()
     
@@ -218,9 +247,9 @@ def compute_row_features(df):
     df['ma20'] = df['close'].rolling(window=20).mean()
     
     # Moving Average Ratios
-    df['ma5_ratio'] = df['close'] / df['ma5']
-    df['ma10_ratio'] = df['close'] / df['ma10']
-    df['ma20_ratio'] = df['close'] / df['ma20']
+    df['ma5_ratio'] = df['close'] / (df['ma5'] + 1e-8)
+    df['ma10_ratio'] = df['close'] / (df['ma10'] + 1e-8)
+    df['ma20_ratio'] = df['close'] / (df['ma20'] + 1e-8)
     
     # Volatility parameters (std of log returns)
     df['volatility_10'] = df['log_return'].rolling(window=10).std()
@@ -235,8 +264,13 @@ def compute_row_features(df):
     df['log_volume'] = np.log(df['volume'] + 1.0)
     df['volume_change'] = df['volume'].pct_change()
     
+    # Replace infinities and NaNs
+    df = df.replace([np.inf, -np.inf], np.nan)
+    df = df.ffill().bfill()
+    df = df.fillna(0.0)
+    
     # High-Low Range normalized by closing price
-    df['hl_range'] = (df['high'] - df['low']) / df['close']
+    df['hl_range'] = (df['high'] - df['low']) / (df['close'] + 1e-8)
     
     return df
 
@@ -289,127 +323,87 @@ def generate_graceful_fallback(df, symbol):
         "is_fallback": True
     }
 
-@app.route('/api/predict', methods=['GET'])
-def predict():
-    symbol = request.args.get('symbol', '').strip().upper()
-    if not symbol:
-        return jsonify({"error": "Symbol query parameter is required"}), 400
-        
-    # 1. Fetch DSE history data
-    history = fetch_history_from_scraper(symbol)
-    if not history or len(history) < 20:
-        return jsonify({"error": f"Failed to fetch sufficient historical candles for symbol: {symbol}"}), 404
-        
-    df = pd.DataFrame(history)
-    df['open'] = df['open'].astype(float)
-    df['high'] = df['high'].astype(float)
-    df['low'] = df['low'].astype(float)
-    df['close'] = df['close'].astype(float)
-    df['volume'] = df['volume'].astype(float)
-    
-    current_price = float(df.iloc[-1]['close'])
-    
-    # 2. Check if PatchTST model exists for this symbol
-    model, scaler = get_model_and_scaler(symbol)
-    
-    if model is None or scaler is None:
-        # Fallback gracefully
-        return jsonify(generate_graceful_fallback(df, symbol))
-        
-    # 3. Preprocess and run PatchTST model
+def calculate_wasserstein_drift(X_live, scaler):
+    """
+    Computes 1D Wasserstein Distance between empirical distribution of live features 
+    and the target standard normal training distribution N(0, 1).
+    """
     try:
-        # Build features
-        df_feat = compute_row_features(df)
-        df_feat = df_feat.dropna().reset_index(drop=True)
+        X_scaled = scaler.transform(X_live)
+        means = np.mean(X_scaled, axis=0)
+        stds = np.std(X_scaled, axis=0)
         
-        if len(df_feat) < 60:
-            print(f"[Prediction Pipeline] Insufficient history length ({len(df_feat)}) for {symbol} after feature engineering. Falling back.")
-            return jsonify(generate_graceful_fallback(df, symbol))
+        w_distances = []
+        for m, s in zip(means, stds):
+            w_dist = math.sqrt(m**2 + (s - 1)**2)
+            w_distances.append(w_dist)
             
-        features_cols = [
-            'log_return', 'return', 'ma5_ratio', 'ma10_ratio', 'ma20_ratio', 
-            'volatility_10', 'volatility_20', 'volatility_z', 'log_volume', 
-            'volume_change', 'hl_range'
-        ]
-        
-        # Roll forward autoregressively for 5 days
-        predictions = []
-        df_roll = df_feat.copy()
-        
-        # Hyperparameters for patching
+        avg_w = float(np.mean(w_distances))
+        drift_score = min(99.0, max(1.0, avg_w * 40.0))
+        return drift_score
+    except Exception as e:
+        print(f"[Drift Engine] Failed to compute Wasserstein drift: {e}")
+        return 45.0
+
+def compute_gradient_saliency(model, X_scaled, scaler):
+    """
+    Computes model-based feature importance by calculating the average absolute gradient
+    of the model forecast with respect to each feature channel.
+    """
+    try:
         seq_len = 60
         patch_len = 12
         stride = 6
         num_patches = ((seq_len - patch_len) // stride) + 1
         
-        for day in range(5):
-            # Take latest 60 days
-            df_seq = df_roll.tail(60)
-            X = df_seq[features_cols].values
+        patches = []
+        for p in range(num_patches):
+            start = p * stride
+            end = start + patch_len
+            patch = X_scaled[start:end, :].flatten()
+            patches.append(patch)
             
-            # Apply StandardScaler scaling
-            X_scaled = scaler.transform(X)
-            
-            # Segment into patches
-            patches = []
-            for p in range(num_patches):
-                start = p * stride
-                end = start + patch_len
-                patch = X_scaled[start:end, :].flatten()  # 132 elements
-                patches.append(patch)
-                
-            input_tensor = torch.tensor(np.array(patches), dtype=torch.float32).unsqueeze(0)  # [1, 9, 132]
-            
-            # Forward pass
-            with torch.no_grad():
-                out = model(input_tensor)
-                
-            pred_scaled = out.item()
-            
-            # De-scale predicted log_return (index 0)
-            pred_log_return = pred_scaled * scaler.scale_[0] + scaler.mean_[0]
-            
-            last_row = df_roll.iloc[-1]
-            next_close = float(last_row['close'] * math.exp(pred_log_return))
-            predictions.append(round(next_close, 2))
-            
-            # Append simulated new day to keep rolling
-            next_row = {
-                'time': f"sim_{day+1}",
-                'open': float(last_row['close']),
-                'high': float(max(last_row['close'], next_close)),
-                'low': float(min(last_row['close'], next_close)),
-                'close': next_close,
-                'volume': float(last_row['volume'])
-            }
-            
-            df_roll = pd.concat([df_roll, pd.DataFrame([next_row])], ignore_index=True)
-            df_roll = compute_row_features(df_roll)
-            
-        direction = "UP" if predictions[-1] > current_price else "DOWN"
+        input_tensor = torch.tensor(np.array(patches), dtype=torch.float32).unsqueeze(0)
+        input_tensor.requires_grad = True
         
-        # Calculate normal CDF confidence based on day 1 expected return vs 20-day volatility
-        first_pred_return = (predictions[0] - current_price) / current_price
-        vol_20 = float(df_feat.iloc[-1]['volatility_20'])
-        z_score = first_pred_return / (vol_20 + 1e-8)
-        confidence = 50.0 + 50.0 * math.erf(abs(z_score) / math.sqrt(2))
+        out = model(input_tensor)
         
-        # Keep confidence in [50.0, 99.0]
-        confidence = max(50.0, min(99.0, confidence))
+        model.zero_grad()
+        out.backward()
         
-        print(f"[Prediction Pipeline] PatchTST prediction completed for {symbol}. Dir: {direction}, Conf: {confidence:.2f}%")
-        return jsonify({
-            "symbol": symbol,
-            "current_price": current_price,
-            "prediction": predictions,
-            "direction": direction,
-            "confidence": round(confidence, 2),
-            "is_fallback": False
-        })
+        grads = input_tensor.grad.squeeze(0).abs().numpy()
         
+        grads_reshaped = grads.reshape(num_patches, patch_len, 11)
+        feature_saliency = np.mean(grads_reshaped, axis=(0, 1))
+        
+        total = np.sum(feature_saliency)
+        if total > 0:
+            feature_saliency_pct = (feature_saliency / total) * 100.0
+        else:
+            feature_saliency_pct = np.ones(11) * (100.0 / 11)
+            
+        momentum = float(feature_saliency_pct[0] + feature_saliency_pct[1])
+        volume = float(feature_saliency_pct[8] + feature_saliency_pct[9])
+        regime = float(feature_saliency_pct[7])
+        drift = float(feature_saliency_pct[4])
+        correlation = float(feature_saliency_pct[3])
+        sentiment = float(feature_saliency_pct[10])
+        
+        salience_list = [momentum, volume, regime, drift, correlation, sentiment]
+        max_val = max(salience_list) if max(salience_list) > 0 else 1.0
+        scaled_values = [min(98.0, max(20.0, (v / max_val) * 75.0 + 15.0)) for v in salience_list]
+        
+        return {
+            "momentum": int(round(scaled_values[0], 0)),
+            "volume": int(round(scaled_values[1], 0)),
+            "regime": int(round(scaled_values[2], 0)),
+            "drift": int(round(scaled_values[3], 0)),
+            "correlation": int(round(scaled_values[4], 0)),
+            "sentiment": int(round(scaled_values[5], 0))
+        }
     except Exception as e:
-        print(f"[Prediction Pipeline] Error during inference for {symbol}: {e}")
-        return jsonify(generate_graceful_fallback(df, symbol))
+        print(f"[Saliency Engine] Failed to calculate gradient saliency: {e}")
+        return None
 
 def compute_rsi(prices, period=14):
     if len(prices) < period + 1:
@@ -442,10 +436,119 @@ def compute_rsi(prices, period=14):
         rsi[i] = 100. - 100. / (1. + rs)
     return float(rsi[-1])
 
+@app.route('/api/predict', methods=['GET'])
+def predict():
+    symbol = request.args.get('symbol', '').strip().upper()
+    if not symbol:
+        return jsonify({"error": "Symbol query parameter is required"}), 400
+        
+    history, last_scraped = fetch_history_from_scraper(symbol)
+    if not history or len(history) < 20:
+        return jsonify({"error": f"Failed to fetch sufficient historical candles for symbol: {symbol}"}), 404
+        
+    df = pd.DataFrame(history)
+    df['open'] = df['open'].astype(float)
+    df['high'] = df['high'].astype(float)
+    df['low'] = df['low'].astype(float)
+    df['close'] = df['close'].astype(float)
+    df['volume'] = df['volume'].astype(float)
+    
+    current_price = float(df.iloc[-1]['close'])
+    
+    model, scaler = get_model_and_scaler(symbol)
+    if model is None or scaler is None:
+        fallback = generate_graceful_fallback(df, symbol)
+        fallback["last_scraped"] = last_scraped
+        return jsonify(fallback)
+        
+    try:
+        df_feat = compute_row_features(df)
+        df_feat = df_feat.dropna().reset_index(drop=True)
+        
+        if len(df_feat) < 60:
+            print(f"[Prediction Pipeline] Insufficient history length ({len(df_feat)}) for {symbol} after feature engineering. Falling back.")
+            fallback = generate_graceful_fallback(df, symbol)
+            fallback["last_scraped"] = last_scraped
+            return jsonify(fallback)
+            
+        features_cols = [
+            'log_return', 'return', 'ma5_ratio', 'ma10_ratio', 'ma20_ratio', 
+            'volatility_10', 'volatility_20', 'volatility_z', 'log_volume', 
+            'volume_change', 'hl_range'
+        ]
+        
+        predictions = []
+        df_roll = df_feat.copy()
+        seq_len = 60
+        patch_len = 12
+        stride = 6
+        num_patches = ((seq_len - patch_len) // stride) + 1
+        
+        for day in range(5):
+            df_seq = df_roll.tail(60)
+            X = df_seq[features_cols].values
+            X_scaled = scaler.transform(X)
+            
+            patches = []
+            for p in range(num_patches):
+                start = p * stride
+                end = start + patch_len
+                patch = X_scaled[start:end, :].flatten()
+                patches.append(patch)
+                
+            input_tensor = torch.tensor(np.array(patches), dtype=torch.float32).unsqueeze(0)
+            
+            with torch.no_grad():
+                out = model(input_tensor)
+                
+            pred_scaled = out.item()
+            pred_log_return = pred_scaled * scaler.scale_[0] + scaler.mean_[0]
+            
+            last_row = df_roll.iloc[-1]
+            next_close = float(last_row['close'] * math.exp(pred_log_return))
+            predictions.append(round(next_close, 2))
+            
+            next_row = {
+                'time': f"sim_{day+1}",
+                'open': float(last_row['close']),
+                'high': float(max(last_row['close'], next_close)),
+                'low': float(min(last_row['close'], next_close)),
+                'close': next_close,
+                'volume': float(last_row['volume'])
+            }
+            
+            df_roll = pd.concat([df_roll, pd.DataFrame([next_row])], ignore_index=True)
+            df_roll = compute_row_features(df_roll)
+            
+        direction = "UP" if predictions[-1] > current_price else "DOWN"
+        
+        first_pred_return = (predictions[0] - current_price) / current_price
+        vol_20 = float(df_feat.iloc[-1]['volatility_20'])
+        z_score = first_pred_return / (vol_20 + 1e-8)
+        confidence = 50.0 + 50.0 * math.erf(abs(z_score) / math.sqrt(2))
+        confidence = max(50.0, min(99.0, confidence))
+        
+        print(f"[Prediction Pipeline] PatchTST prediction completed for {symbol}. Dir: {direction}, Conf: {confidence:.2f}%")
+        return jsonify({
+            "symbol": symbol,
+            "current_price": current_price,
+            "prediction": predictions,
+            "direction": direction,
+            "confidence": round(confidence, 2),
+            "is_fallback": False,
+            "last_scraped": last_scraped
+        })
+        
+    except Exception as e:
+        print(f"[Prediction Pipeline] Error during inference for {symbol}: {e}")
+        fallback = generate_graceful_fallback(df, symbol)
+        fallback["last_scraped"] = last_scraped
+        return jsonify(fallback)
+
 @app.route('/api/features', methods=['GET'])
 def get_features():
     symbol = request.args.get('symbol', 'SQURPHARMA').strip().upper()
-    history = fetch_history_from_scraper(symbol)
+    history, last_scraped = fetch_history_from_scraper(symbol)
     if not history or len(history) < 20:
         return jsonify({"error": "Failed to fetch stock history"}), 404
         
@@ -455,8 +558,31 @@ def get_features():
     lows = [h['low'] for h in history]
     opens = [h['open'] for h in history]
     
+    model, scaler = get_model_and_scaler(symbol)
+    if model is not None and scaler is not None:
+        df = pd.DataFrame(history)
+        df_feat = compute_row_features(df)
+        df_feat = df_feat.dropna().reset_index(drop=True)
+        if len(df_feat) >= 60:
+            features_cols = [
+                'log_return', 'return', 'ma5_ratio', 'ma10_ratio', 'ma20_ratio', 
+                'volatility_10', 'volatility_20', 'volatility_z', 'log_volume', 
+                'volume_change', 'hl_range'
+            ]
+            X_live = df_feat.tail(60)[features_cols].values
+            X_scaled = scaler.transform(X_live)
+            saliency = compute_gradient_saliency(model, X_scaled, scaler)
+            if saliency:
+                return jsonify([
+                    { "label": "Price Momentum (14D)", "value": saliency["momentum"], "color": "green" },
+                    { "label": "Volume Anomaly Score", "value": saliency["volume"], "color": "cyan" },
+                    { "label": "Regime State Vector", "value": saliency["regime"], "color": "green" },
+                    { "label": "Drift Coefficient", "value": saliency["drift"], "color": "amber" },
+                    { "label": "Sector Correlation", "value": saliency["correlation"], "color": "cyan" },
+                    { "label": "Sentiment Index", "value": saliency["sentiment"], "color": "amber" }
+                ])
+                
     rsi_val = compute_rsi(closes, 14)
-    
     vol_mean = np.mean(volumes[-20:])
     vol_anomaly = (volumes[-1] / (vol_mean + 1e-8)) * 50.0
     vol_anomaly = min(100.0, max(0.0, vol_anomaly))
@@ -473,7 +599,7 @@ def get_features():
     ref_symbols = ['GP', 'RENATA', 'BRACBANK']
     ref_returns = []
     for r_sym in ref_symbols:
-        r_hist = fetch_history_from_scraper(r_sym)
+        r_hist, _ = fetch_history_from_scraper(r_sym)
         if r_hist and len(r_hist) >= len(returns_20) + 1:
             r_closes = [h['close'] for h in r_hist[-21:]]
             ref_returns.append(np.diff(r_closes) / r_closes[:-1])
@@ -509,7 +635,7 @@ def get_confidence_heatmap():
     res = []
     
     for symbol in symbols:
-        history = fetch_history_from_scraper(symbol)
+        history, last_scraped = fetch_history_from_scraper(symbol)
         if not history or len(history) < 21:
             res.append({
                 "stock": symbol,
@@ -557,12 +683,18 @@ def get_confidence_heatmap():
 @app.route('/api/drift', methods=['GET'])
 def get_drift_details():
     symbol = request.args.get('symbol', 'SQURPHARMA').strip().upper()
-    history = fetch_history_from_scraper(symbol)
+    history, last_scraped = fetch_history_from_scraper(symbol)
     if not history or len(history) < 30:
         return jsonify({"error": "Failed to fetch stock history"}), 404
         
     closes = [h['close'] for h in history]
     returns = np.diff(closes) / closes[:-1]
+    
+    df = pd.DataFrame(history)
+    df_feat = compute_row_features(df)
+    df_feat = df_feat.dropna().reset_index(drop=True)
+    
+    model, scaler = get_model_and_scaler(symbol)
     
     drift_timeline = []
     stability_timeline = []
@@ -581,7 +713,18 @@ def get_drift_details():
         drift_timeline.append(round(d_score, 1))
         stability_timeline.append(round(stab_idx, 1))
         
-    current_drift = drift_timeline[-1]
+    if model is not None and scaler is not None and len(df_feat) >= 60:
+        features_cols = [
+            'log_return', 'return', 'ma5_ratio', 'ma10_ratio', 'ma20_ratio', 
+            'volatility_10', 'volatility_20', 'volatility_z', 'log_volume', 
+            'volume_change', 'hl_range'
+        ]
+        X_live = df_feat.tail(60)[features_cols].values
+        current_drift = calculate_wasserstein_drift(X_live, scaler)
+        drift_timeline[-1] = round(current_drift, 1)
+    else:
+        current_drift = drift_timeline[-1]
+        
     current_stability = stability_timeline[-1]
     
     state_above = current_drift > 60
@@ -635,7 +778,8 @@ def get_drift_details():
         "returnDistLabels": labels_dist,
         "returnDistBefore": before_list,
         "returnDistAfter": after_list,
-        "warnings": warnings
+        "warnings": warnings,
+        "last_scraped": last_scraped
     })
 
 @app.route('/api/market/regime', methods=['GET'])
@@ -644,8 +788,26 @@ def get_market_regime():
     volatilities = []
     recent_returns = []
     
+    advances = 0
+    declines = 0
+    
+    try:
+        ticker_url = "http://localhost:3000/api/dse/tickers"
+        req = urllib.request.Request(ticker_url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=3) as response:
+            tickers = json.loads(response.read().decode('utf-8'))
+            for t in tickers:
+                pct_str = t.get('changePct') or t.get('change') or ''
+                if '+' in pct_str:
+                    advances += 1
+                elif '-' in pct_str:
+                    declines += 1
+    except Exception:
+        advances = 18
+        declines = 12
+        
     for symbol in symbols:
-        history = fetch_history_from_scraper(symbol)
+        history, _ = fetch_history_from_scraper(symbol)
         if history and len(history) >= 21:
             closes = [h['close'] for h in history[-21:]]
             rets = np.diff(closes) / closes[:-1]
@@ -655,6 +817,13 @@ def get_market_regime():
     avg_vol = np.mean(volatilities) if volatilities else 0.015
     avg_ret = np.mean(recent_returns) if recent_returns else 0.001
     
+    rsis = []
+    for symbol in symbols:
+        history, _ = fetch_history_from_scraper(symbol)
+        if history and len(history) >= 15:
+            rsis.append(compute_rsi([h['close'] for h in history], 14))
+    avg_rsi = np.mean(rsis) if rsis else 50.0
+    
     drift_score = min(99.0, max(1.0, 50.0 + (avg_ret / (avg_vol + 1e-8)) * 25.0))
     stability_idx = min(99.0, max(1.0, 100.0 - avg_vol * 2000.0))
     
@@ -663,23 +832,20 @@ def get_market_regime():
         label = "Stormy Market"
         desc = "High turbulence — elevated systemic risk"
         icon = "⛈"
-        weather_level = "High"
+        vis_liquidity = "Low"
     elif avg_ret > 0:
         status = "BULL"
         label = "Clear Skies"
         desc = "Low turbulence — bullish trends established"
         icon = "☀️"
-        weather_level = "Low"
+        vis_liquidity = "High"
     else:
         status = "BEAR"
         label = "Crimson Slate"
         desc = "Negative returns — risk mitigation active"
         icon = "🌧"
-        weather_level = "High"
+        vis_liquidity = "Med"
         
-    pressure = int(1000 + drift_score * 0.5)
-    wind_speed = int(avg_vol * 2000)
-    
     events = [
         { "date": "Jan 08", "text": "Structural break in financial sector", "color": "red" },
         { "date": "Jan 15", "text": "Volatility regime transition detected", "color": "amber" }
@@ -695,22 +861,53 @@ def get_market_regime():
             "icon": icon,
             "label": label,
             "description": desc,
-            "pressure": f"{pressure} hPa",
-            "windSpeed": f"{wind_speed} knots",
-            "visibility": "Poor" if status == "VOLATILE" else "Good",
-            "humidity": weather_level
+            "pressure": f"{avg_vol*100:.2f}%",
+            "windSpeed": f"{avg_rsi:.1f}",
+            "visibility": vis_liquidity,
+            "humidity": f"{advances} : {declines}"
         },
         "regimeEvents": events
     })
 
+@app.route('/api/portfolio/holdings', methods=['GET'])
+def get_portfolio_holdings():
+    return jsonify(load_portfolio())
+
+@app.route('/api/portfolio/manage', methods=['POST'])
+def manage_portfolio_holdings():
+    try:
+        req_data = request.get_json() or {}
+        action = req_data.get('action')
+        symbol = req_data.get('symbol', '').strip().upper()
+        
+        if symbol == 'SQPHARMA':
+            symbol = 'SQURPHARMA'
+            
+        holdings = load_portfolio()
+        
+        if action == 'add':
+            shares = int(req_data.get('shares', 0))
+            if shares <= 0 or not symbol:
+                return jsonify({"error": "Invalid symbol or shares quantity"}), 400
+            holdings[symbol] = holdings.get(symbol, 0) + shares
+        elif action == 'remove':
+            if symbol in holdings:
+                del holdings[symbol]
+            else:
+                return jsonify({"error": "Symbol not in portfolio"}), 404
+        else:
+            return jsonify({"error": "Invalid action. Use 'add' or 'remove'"}), 400
+            
+        if save_portfolio(holdings):
+            return jsonify({"success": True, "holdings": holdings})
+        else:
+            return jsonify({"error": "Failed to save portfolio to database"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/portfolio', methods=['GET'])
 def get_portfolio():
-    holdings = {
-        "SQURPHARMA": 500,
-        "BRACBANK": 1000,
-        "RENATA": 300,
-        "BEXIMCO": 800
-    }
+    holdings = load_portfolio()
     
     sectors = {
         "SQURPHARMA": "Pharma",
@@ -726,7 +923,7 @@ def get_portfolio():
     individual_valuations = {}
     
     for symbol, shares in holdings.items():
-        history = fetch_history_from_scraper(symbol)
+        history, _ = fetch_history_from_scraper(symbol)
         if history and len(history) >= 20:
             df = pd.DataFrame(history)
             df['close'] = df['close'].astype(float)
@@ -747,6 +944,20 @@ def get_portfolio():
                     portfolio_history_sum += closes_hist * shares
                     
     if portfolio_history_sum is None:
+        if not holdings:
+            return jsonify({
+                "totalValue": "0",
+                "dayPnl": "৳ 0",
+                "riskScore": "0.0/10",
+                "sharpe": "0.00",
+                "returnPct": "+0.00% since inception",
+                "portfolioChartLabels": ['Jan 1', 'Jan 5', 'Jan 9', 'Jan 13', 'Jan 17', 'Jan 19', 'Jan 21', 'Jan 25'],
+                "portfolioChartValues": [0,0,0,0,0,0,0,0],
+                "benchmarkValues": [0,0,0,0,0,0,0,0],
+                "assetAllocation": [],
+                "portfolioRecommendations": [],
+                "riskExposure": []
+            })
         portfolio_history_sum = np.array([252000, 258000, 260000, 262000, 265000, 268000, 272000, 277909])
         time_labels = ['Jan 1', 'Jan 5', 'Jan 9', 'Jan 13', 'Jan 17', 'Jan 19', 'Jan 21', 'Jan 25']
         current_value = 277909
@@ -816,6 +1027,12 @@ def get_portfolio():
         "riskExposure": risk_exposure
     })
 
+def prewarm_model_cache():
+    print("[Cache Startup] Pre-warming memory cache for top stocks...")
+    top_stocks = ['SQURPHARMA', 'GP', 'RENATA', 'BRACBANK', 'BEXIMCO']
+    for sym in top_stocks:
+        get_model_and_scaler(sym)
+
 if __name__ == '__main__':
-    # Running local prediction microservice
+    prewarm_model_cache()
     app.run(host='0.0.0.0', port=5000, debug=False)

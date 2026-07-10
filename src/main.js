@@ -256,7 +256,8 @@ async function loadStockData(symbol) {
         const predHeader = document.getElementById('predictCardHeaderSymbol');
         if (predHeader) {
           const fallbackBadge = predData.is_fallback ? ' <span class="badge fallback" style="background:#4B5563;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px;">FALLBACK</span>' : ' <span class="badge dl-model" style="background:#0066FF;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px;">PATCHTST</span>';
-          predHeader.innerHTML = `<span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — ${symbol}${fallbackBadge}`;
+          const timeBadge = predData.last_scraped ? `<span style="font-size:10px;color:var(--text-muted);margin-left:12px;font-family:var(--font-mono);font-weight:normal;">${predData.last_scraped === 'Live' ? 'LIVE DSE' : 'CACHE: ' + predData.last_scraped}</span>` : '';
+          predHeader.innerHTML = `<span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — ${symbol}${fallbackBadge}${timeBadge}`;
         }
         
         const predCurrent = document.getElementById('predictCurrentPrice');
@@ -427,13 +428,14 @@ async function loadMarketIntelligence() {
     const wDesc = document.querySelector('.weather-desc');
     if (wDesc) wDesc.textContent = data.marketWeather.description;
     
-    const cells = document.querySelectorAll('.weather-cell-value');
-    if (cells.length >= 4) {
-      cells[0].textContent = data.marketWeather.pressure;
-      cells[1].textContent = data.marketWeather.windSpeed;
-      cells[2].textContent = data.marketWeather.visibility;
-      cells[3].textContent = data.marketWeather.humidity;
-    }
+    const wVol = document.getElementById('weather-vol');
+    if (wVol) wVol.textContent = data.marketWeather.pressure;
+    const wMom = document.getElementById('weather-mom');
+    if (wMom) wMom.textContent = data.marketWeather.windSpeed;
+    const wLiq = document.getElementById('weather-liq');
+    if (wLiq) wLiq.textContent = data.marketWeather.visibility;
+    const wAd = document.getElementById('weather-ad');
+    if (wAd) wAd.textContent = data.marketWeather.humidity;
     
     // Update Regime Events list
     const timeline = document.querySelector('#view-market-intelligence .event-timeline');
@@ -460,7 +462,10 @@ async function loadDriftMonitor(symbol) {
     
     // Update Alert Banner
     const bannerTitle = document.querySelector('.alert-title');
-    if (bannerTitle) bannerTitle.innerHTML = `<span class="alert-icon">⚠</span> ${data.alertTitle}`;
+    if (bannerTitle) {
+      const timeStr = data.last_scraped ? ` <span style="font-size:10px;font-family:var(--font-mono);font-weight:normal;color:var(--text-muted);margin-left:12px;">${data.last_scraped === 'Live' ? 'LIVE DSE' : 'CACHE: ' + data.last_scraped}</span>` : '';
+      bannerTitle.innerHTML = `<span class="alert-icon">⚠</span> ${data.alertTitle}${timeStr}`;
+    }
     
     const bannerBody = document.querySelector('.alert-body');
     if (bannerBody) bannerBody.textContent = data.alertBody;
@@ -676,4 +681,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Set initial narrator time
   updateNarrator(currentView);
+
+  // Portfolio Management Form bindings
+  const addBtn = document.getElementById('addPortBtn');
+  if (addBtn) {
+    addBtn.addEventListener('click', async () => {
+      const symbolInput = document.getElementById('portSymbol');
+      const sharesInput = document.getElementById('portShares');
+      const statusMsg = document.getElementById('portStatusMsg');
+      
+      const symbol = symbolInput ? symbolInput.value.trim().toUpperCase() : '';
+      const shares = sharesInput ? parseInt(sharesInput.value) : 0;
+      
+      if (!symbol || shares <= 0) {
+        if (statusMsg) {
+          statusMsg.style.color = '#ef4444';
+          statusMsg.textContent = 'Invalid symbol or shares quantity';
+          statusMsg.style.display = 'block';
+        }
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/portfolio/manage', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'add', symbol, shares })
+        });
+        
+        const resData = await response.json();
+        if (response.ok) {
+          if (statusMsg) {
+            statusMsg.style.color = 'var(--accent-teal)';
+            statusMsg.textContent = `Added ${shares} shares of ${symbol}`;
+            statusMsg.style.display = 'block';
+          }
+          if (symbolInput) symbolInput.value = '';
+          if (sharesInput) sharesInput.value = '';
+          loadPortfolio();
+        } else {
+          if (statusMsg) {
+            statusMsg.style.color = '#ef4444';
+            statusMsg.textContent = resData.error || 'Failed to add holding';
+            statusMsg.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to manage portfolio:', err);
+      }
+    });
+  }
+
+  const removeBtn = document.getElementById('removePortBtn');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', async () => {
+      const symbolInput = document.getElementById('removePortSymbol');
+      const statusMsg = document.getElementById('portStatusMsg');
+      
+      const symbol = symbolInput ? symbolInput.value.trim().toUpperCase() : '';
+      
+      if (!symbol) {
+        if (statusMsg) {
+          statusMsg.style.color = '#ef4444';
+          statusMsg.textContent = 'Please specify a symbol';
+          statusMsg.style.display = 'block';
+        }
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/portfolio/manage', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ action: 'remove', symbol })
+        });
+        
+        const resData = await response.json();
+        if (response.ok) {
+          if (statusMsg) {
+            statusMsg.style.color = 'var(--accent-teal)';
+            statusMsg.textContent = `Removed ${symbol} from portfolio`;
+            statusMsg.style.display = 'block';
+          }
+          if (symbolInput) symbolInput.value = '';
+          loadPortfolio();
+        } else {
+          if (statusMsg) {
+            statusMsg.style.color = '#ef4444';
+            statusMsg.textContent = resData.error || 'Failed to remove holding';
+            statusMsg.style.display = 'block';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to manage portfolio:', err);
+      }
+    });
+  }
 });
