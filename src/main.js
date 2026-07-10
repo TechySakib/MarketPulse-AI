@@ -16,6 +16,7 @@ let currentView = 'market-intelligence';
 const chartInstances = {};
 let activeStock = 'SQURPHARMA';
 let activeTimeframe = '30D';
+let activePredictions = [];
 
 // ─── NAVIGATION ─────────────────────────────────────────────────
 function setupNavigation() {
@@ -153,7 +154,7 @@ async function loadActiveCharts() {
     // 3. Update scenario projection chart if ready
     if (chartInstances.scenario && history.length > 0) {
       const lastPoint = history[history.length - 1];
-      updateScenarioChartData(chartInstances.scenario, lastPoint.close);
+      updateScenarioChartData(chartInstances.scenario, lastPoint.close, activePredictions);
     }
   } catch (err) {
     console.error('Failed to load active stock charts:', err);
@@ -225,19 +226,52 @@ async function loadStockData(symbol) {
     const sectorEl = document.getElementById('metricSector');
     if (sectorEl) sectorEl.textContent = metrics.sector;
 
-    // 4. Update AI Prediction view text cards
-    const predHeader = document.getElementById('predictCardHeaderSymbol');
-    if (predHeader) predHeader.innerHTML = `<span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — ${symbol}`;
+    // 4. Fetch live AI predictions from PatchTST
+    activePredictions = [];
+    try {
+      const predRes = await fetch(`/api/predict?symbol=${symbol}`);
+      if (predRes.ok) {
+        const predData = await predRes.json();
+        activePredictions = predData.prediction;
+        
+        const nextDayPrice = activePredictions[0];
+        const changePct = ((nextDayPrice - priceVal) / priceVal) * 100;
+        const signChar = changePct >= 0 ? '+' : '';
+        
+        const predHeader = document.getElementById('predictCardHeaderSymbol');
+        if (predHeader) {
+          const fallbackBadge = predData.is_fallback ? ' <span class="badge fallback" style="background:#4B5563;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px;">FALLBACK</span>' : ' <span class="badge dl-model" style="background:#0066FF;font-size:10px;padding:2px 6px;border-radius:4px;margin-left:8px;">PATCHTST</span>';
+          predHeader.innerHTML = `<span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — ${symbol}${fallbackBadge}`;
+        }
+        
+        const predCurrent = document.getElementById('predictCurrentPrice');
+        if (predCurrent) predCurrent.textContent = priceVal.toFixed(2);
+        
+        const predForecast = document.getElementById('predictForecastPrice');
+        if (predForecast) predForecast.textContent = nextDayPrice.toFixed(2);
+        
+        const predChange = document.getElementById('predictExpectedChange');
+        if (predChange) {
+          predChange.className = `stock-change ${changePct >= 0 ? 'up' : 'down'}`;
+          predChange.textContent = `${signChar}${changePct.toFixed(2)}% [Conf: ${predData.confidence}%]`;
+        }
+      }
+    } catch (predErr) {
+      console.warn('Failed to fetch PatchTST predictions, using mock fallback:', predErr);
+      
+      const predHeader = document.getElementById('predictCardHeaderSymbol');
+      if (predHeader) predHeader.innerHTML = `<span class="icon">🟢</span> NEXT-DAY PRICE FORECAST — ${symbol}`;
 
-    const predCurrent = document.getElementById('predictCurrentPrice');
-    if (predCurrent) predCurrent.textContent = metrics.price;
+      const predCurrent = document.getElementById('predictCurrentPrice');
+      if (predCurrent) predCurrent.textContent = metrics.price;
 
-    const forecastPrice = priceVal * 1.062; // 6.2% optimistic projection
-    const predForecast = document.getElementById('predictForecastPrice');
-    if (predForecast) predForecast.textContent = forecastPrice.toFixed(2);
+      const forecastPrice = priceVal * 1.062;
+      const predForecast = document.getElementById('predictForecastPrice');
+      if (predForecast) predForecast.textContent = forecastPrice.toFixed(2);
 
-    const predChange = document.getElementById('predictExpectedChange');
-    if (predChange) predChange.textContent = `${sign}${pct.toFixed(2)}% EXPECTED`;
+      const predChange = document.getElementById('predictExpectedChange');
+      if (predChange) predChange.textContent = `${sign}${pct.toFixed(2)}% EXPECTED`;
+    }
 
     // 5. Fetch and update chart historical vectors
     await loadActiveCharts();

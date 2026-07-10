@@ -201,16 +201,30 @@ export function initPortfolioChart(canvasId) {
   });
 }
 
-export function updateScenarioChartData(chartInstance, currentPrice) {
+export function updateScenarioChartData(chartInstance, currentPrice, predictions) {
   if (!chartInstance || isNaN(currentPrice)) return;
 
   const p = currentPrice;
-  chartInstance.data.datasets[0].data = [p, p * 1.01, p * 1.03, p * 1.05, p * 1.08, p * 1.11, p * 1.14, p * 1.17];
-  chartInstance.data.datasets[1].data = [p, p * 1.002, p * 1.005, p * 1.008, p * 1.01, p * 1.012, p * 1.015, p * 1.018];
-  chartInstance.data.datasets[2].data = [p, p * 0.99, p * 0.98, p * 0.97, p * 0.96, p * 0.95, p * 0.94, p * 0.93];
+  let predList = predictions;
+  if (!predList || !Array.isArray(predList) || predList.length === 0) {
+    predList = [p * 1.002, p * 1.005, p * 1.008, p * 1.01, p * 1.012];
+  }
 
-  chartInstance.options.scales.y.min = Math.floor(p * 0.9);
-  chartInstance.options.scales.y.max = Math.ceil(p * 1.25);
+  const dataNeutral = [p, ...predList];
+  const dataOptimistic = [p, ...predList.map((val, idx) => val * (1 + 0.015 * (idx + 1)))];
+  const dataPessimistic = [p, ...predList.map((val, idx) => val * (1 - 0.015 * (idx + 1)))];
+
+  chartInstance.data.labels = ['Current', 'Day 1', 'Day 2', 'Day 3', 'Day 4', 'Day 5'];
+  chartInstance.data.datasets[0].data = dataOptimistic;
+  chartInstance.data.datasets[1].data = dataNeutral;
+  chartInstance.data.datasets[2].data = dataPessimistic;
+
+  const allVals = [...dataOptimistic, ...dataPessimistic];
+  const minVal = Math.min(...allVals);
+  const maxVal = Math.max(...allVals);
+
+  chartInstance.options.scales.y.min = Math.floor(minVal * 0.98);
+  chartInstance.options.scales.y.max = Math.ceil(maxVal * 1.02);
 
   chartInstance.update();
 }

@@ -3,3 +3,4 @@ dist/
 .DS_Store
 *.log
 scratch/
+DSE_PatchTST_Adjusted_Models/

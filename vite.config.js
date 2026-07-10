@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import https from 'https';
+import http from 'http';
 import url from 'url';
 
 // Simple in-memory cache to prevent overloading DSE servers and keep UI snappy
@@ -261,6 +262,22 @@ export default defineConfig({
               res.statusCode = 500;
               res.end(JSON.stringify({ error: err.message }));
             }
+          }
+          else if (pathname === '/api/predict') {
+            res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            const symbol = parsedUrl.query.symbol || 'SQURPHARMA';
+            
+            http.get(`http://localhost:5000/api/predict?symbol=${encodeURIComponent(symbol)}`, (pythonRes) => {
+              let data = '';
+              pythonRes.on('data', (chunk) => { data += chunk; });
+              pythonRes.on('end', () => {
+                res.end(data);
+              });
+            }).on('error', (err) => {
+              res.statusCode = 500;
+              res.end(JSON.stringify({ error: `Python prediction server error: ${err.message}` }));
+            });
           }
           else {
             next();
