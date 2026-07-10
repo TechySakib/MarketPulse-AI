@@ -91,6 +91,25 @@ a {
   text-decoration: none;
 }
 
+/* ─── SELECT / DROPDOWN ──────────────────────────────────────── */
+select {
+  background: var(--bg-card, #0F1629);
+  color: var(--text-bright, #F8FAFC);
+  border: 1px solid var(--border-default, #1A2340);
+  border-radius: var(--radius-sm, 6px);
+}
+
+select option {
+  background: #0F1629;
+  color: #E2E8F0;
+}
+
+select option:checked,
+select option:hover {
+  background: #162040;
+  color: #F8FAFC;
+}
+
 /* ─── SCROLLBAR ──────────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;

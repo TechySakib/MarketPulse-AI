@@ -315,7 +315,7 @@ async function populateStockSelector() {
   try {
     const tickers = await fetchTickers();
     selector.innerHTML = tickers.map(t => 
-      `<option value="${t.symbol}">${t.symbol} (${t.price} BDT) - ${t.changePct || t.change}</option>`
+      `<option value="${t.symbol}" style="background:#1a2035; color:#e2e8f0;">${t.symbol} (${t.price} BDT) - ${t.changePct || t.change}</option>`
     ).join('');
     
     selector.value = activeStock;
