@@ -545,6 +545,12 @@ async function loadDriftMonitor(symbol) {
     const res = await fetch(`/api/drift?symbol=${symbol}`);
     const data = await res.json();
     
+    // Update company symbol header
+    const driftActiveStockEl = document.getElementById('driftActiveStock');
+    if (driftActiveStockEl) {
+      driftActiveStockEl.textContent = symbol;
+    }
+    
     // Update Alert Banner
     const bannerTitle = document.querySelector('.alert-title');
     if (bannerTitle) {
