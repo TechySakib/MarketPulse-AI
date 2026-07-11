@@ -294,6 +294,14 @@ async function loadStockData(symbol) {
         predChange.textContent = `${signChar}${changePct.toFixed(2)}% [Conf: ${predData.confidence}%]`;
       }
 
+      // Update forecast description
+      const predDesc = document.getElementById('predictForecastDesc');
+      if (predDesc) {
+        const modelLabel = predData.is_fallback ? 'Statistical trend model' : 'PatchTST transformer';
+        const dataLabel = predData.last_scraped === 'Live' ? 'live DSE market data' : 'latest cached DSE market data';
+        predDesc.textContent = `${modelLabel} forecast based on historical price patterns, technical indicators, and recent market behavior. Prediction generated using ${dataLabel} and trained model weights.`;
+      }
+
       // Update Gauges
       const confVal = document.getElementById('predictConfidenceVal');
       const confFill = document.getElementById('predictConfidenceFill');
@@ -317,6 +325,12 @@ async function loadStockData(symbol) {
 
       const predChange = document.getElementById('predictExpectedChange');
       if (predChange) predChange.textContent = `${sign}${pct.toFixed(2)}% EXPECTED`;
+
+      // Update forecast description (fallback)
+      const predDescFb = document.getElementById('predictForecastDesc');
+      if (predDescFb) {
+        predDescFb.textContent = 'PatchTST transformer forecast based on historical price patterns, technical indicators, and recent market behavior. Prediction generated using the latest DSE market data and trained model weights.';
+      }
 
       // Update Gauges in fallback
       const confVal = document.getElementById('predictConfidenceVal');
