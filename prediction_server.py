@@ -10,6 +10,11 @@ import torch.nn as nn
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+from drift_monitor.feature_engineering import create_features
+from drift_monitor.wasserstein import calculate_drift
+from drift_monitor.recommendation import get_status
+from drift_monitor.drift_history import save_history
+
 app = Flask(__name__)
 CORS(app)
 
@@ -680,107 +685,172 @@ def get_confidence_heatmap():
         
     return jsonify(res)
 
+@app.route('/api/drift/<symbol>', methods=['GET'])
 @app.route('/api/drift', methods=['GET'])
-def get_drift_details():
-    symbol = request.args.get('symbol', 'SQURPHARMA').strip().upper()
-    history, last_scraped = fetch_history_from_scraper(symbol)
-    if not history or len(history) < 30:
-        return jsonify({"error": "Failed to fetch stock history"}), 404
+def get_drift_details(symbol=None):
+    if not symbol:
+        symbol = request.args.get('symbol', 'SQURPHARMA').strip().upper()
         
-    closes = [h['close'] for h in history]
-    returns = np.diff(closes) / closes[:-1]
-    
-    df = pd.DataFrame(history)
-    df_feat = compute_row_features(df)
-    df_feat = df_feat.dropna().reset_index(drop=True)
-    
-    model, scaler = get_model_and_scaler(symbol)
-    
-    drift_timeline = []
-    stability_timeline = []
-    
-    for idx in range(len(closes) - 18, len(closes)):
-        sub_closes = closes[:idx]
-        sub_returns = np.diff(sub_closes) / sub_closes[:-1]
+    normalized_symbol = symbol.strip().upper()
+    if normalized_symbol == 'SQPHARMA':
+        normalized_symbol = 'SQURPHARMA'
         
-        mean_ret = np.mean(sub_returns[-20:]) if len(sub_returns) >= 20 else np.mean(sub_returns)
-        std_ret = np.std(sub_returns[-20:]) if len(sub_returns) >= 20 else np.std(sub_returns)
-        vol = np.std(sub_returns[-20:]) if len(sub_returns) >= 20 else np.std(sub_returns)
+    history, last_scraped = fetch_history_from_scraper(normalized_symbol)
+    if not history or len(history) < 20:
+        return jsonify({"error": "Failed to fetch stock history or history too short"}), 404
         
-        d_score = min(99.0, max(1.0, 50.0 + (mean_ret / (std_ret + 1e-8)) * 25.0))
-        stab_idx = min(99.0, max(1.0, 100.0 - vol * 2000.0))
-        
-        drift_timeline.append(round(d_score, 1))
-        stability_timeline.append(round(stab_idx, 1))
-        
-    if model is not None and scaler is not None and len(df_feat) >= 60:
-        features_cols = [
-            'log_return', 'return', 'ma5_ratio', 'ma10_ratio', 'ma20_ratio', 
-            'volatility_10', 'volatility_20', 'volatility_z', 'log_volume', 
-            'volume_change', 'hl_range'
-        ]
-        X_live = df_feat.tail(60)[features_cols].values
-        current_drift = calculate_wasserstein_drift(X_live, scaler)
-        drift_timeline[-1] = round(current_drift, 1)
-    else:
-        current_drift = drift_timeline[-1]
-        
-    current_stability = stability_timeline[-1]
-    
-    state_above = current_drift > 60
-    age = 1
-    for score in reversed(drift_timeline[:-1]):
-        if (score > 60) == state_above:
-            age += 1
-        else:
-            break
+    baseline_file = f"drift_baseline/{normalized_symbol}.json"
+    if not os.path.exists(baseline_file):
+        try:
+            df_temp = pd.DataFrame(history)
+            features_temp = create_features(df_temp)
+            baseline = {}
+            columns = ["close", "volume", "return", "ma20", "ma50", "volatility", "rsi"]
+            for col in columns:
+                baseline[col] = features_temp[col].tolist()
+            os.makedirs("drift_baseline", exist_ok=True)
+            with open(baseline_file, "w") as f:
+                json.dump(baseline, f)
+        except Exception as e:
+            return jsonify({"error": f"Failed to generate baseline: {str(e)}"}), 500
             
-    alert_level = min(5, max(1, int(current_drift / 20) + 1))
-    timeline_labels = [h['time'] for h in history[-18:]]
+    with open(baseline_file, "r") as f:
+        training = json.load(f)
+        
+    df_live = pd.DataFrame(history)
+    live_features = create_features(df_live)
     
-    recent_returns = returns[-30:]
-    older_returns = returns[:-30]
+    live = {}
+    for col in training:
+        live[col] = live_features[col].tolist()
+        
+    result = calculate_drift(training, live)
+    overall_drift = result["overall"]
+    status = get_status(overall_drift)
+    status_str = status["status"]
     
+    # Save to daily history
+    history_timeline = save_history(normalized_symbol, overall_drift)
+    
+    # Calculate regime age (consecutive days with the same drift status)
+    regime_age = 1
+    if len(history_timeline) > 1:
+        for hist_item in reversed(history_timeline[:-1]):
+            hist_status = get_status(hist_item["score"])["status"]
+            if hist_status == status_str:
+                regime_age += 1
+            else:
+                break
+                
+    # Map metrics
+    if status_str == 'Stable':
+        alert_level = 1
+        drift_tag = 'STABLE'
+        drift_class = 'stable'
+        stability_tag = 'HIGH'
+        stability_class = 'stable'
+        regime_tag = 'STABLE'
+        regime_class = 'stable'
+        alert_tag = 'LOW'
+        alert_class = 'stable'
+    elif status_str == 'Mild Drift':
+        alert_level = 2
+        drift_tag = 'MILD'
+        drift_class = 'stable'
+        stability_tag = 'HIGH'
+        stability_class = 'stable'
+        regime_tag = 'STABLE'
+        regime_class = 'stable'
+        alert_tag = 'MILD'
+        alert_class = 'stable'
+    elif status_str == 'Moderate Drift':
+        alert_level = 3
+        drift_tag = 'MODERATE'
+        drift_class = 'warning'
+        stability_tag = 'MED'
+        stability_class = 'warning'
+        regime_tag = 'WARNING'
+        regime_class = 'warning'
+        alert_tag = 'MED'
+        alert_class = 'warning'
+    else: # High Drift
+        alert_level = 4
+        drift_tag = 'CRITICAL'
+        drift_class = 'critical'
+        stability_tag = 'LOW'
+        stability_class = 'low'
+        regime_tag = 'VOLATILE'
+        regime_class = 'volatile'
+        alert_tag = 'HIGH'
+        alert_class = 'volatile'
+        
+    alert_title = "Regime Intact" if overall_drift < 0.25 else "Structural Break Likely"
+    alert_body = f"Market behavior matches training distribution. Current drift score is {overall_drift:.4f}, which is below the critical threshold." if overall_drift < 0.25 else f"Drift detection model flags high-confidence regime transition. Drift score {overall_drift:.4f} exceeds critical threshold. Retraining recommended."
+    
+    # Calculate return distribution
     bins = [-0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03]
     labels_dist = ['-3%', '-2%', '-1%', '0%', '1%', '2%', '3%']
     
-    hist_before, _ = np.histogram(older_returns, bins=[-np.inf] + bins + [np.inf])
-    hist_after, _ = np.histogram(recent_returns, bins=[-np.inf] + bins + [np.inf])
+    train_returns = [r for r in training.get("return", []) if r is not None and not math.isnan(r)]
+    live_returns = [r for r in live.get("return", []) if r is not None and not math.isnan(r)]
+    
+    hist_before, _ = np.histogram(train_returns, bins=[-np.inf] + bins + [np.inf])
+    hist_after, _ = np.histogram(live_returns, bins=[-np.inf] + bins + [np.inf])
     
     before_list = [int(v) for v in hist_before]
     after_list = [int(v) for v in hist_after]
     
+    # Warnings list
     warnings = []
-    if current_drift > 60:
+    if overall_drift > 0.25:
         warnings.append({"icon": "⚠", "text": "High volatility regime detected"})
-        warnings.append({"icon": "⚡", "text": f"Structural break likely in next 48-72h (Alert Level {alert_level})"})
+        warnings.append({"icon": "⚡", "text": f"Structural break likely (Alert Level {alert_level})"})
     else:
         warnings.append({"icon": "🟢", "text": "Market regime currently stable"})
         warnings.append({"icon": "ℹ", "text": "No significant structural drift detected"})
         
-    if current_stability < 40:
-        warnings.append({"icon": "📉", "text": "Correlation matrix breakdown detected"})
-    else:
-        warnings.append({"icon": "📈", "text": "Correlation matrix stable"})
-        
-    alert_title = "Structural Break Likely" if current_drift > 60 else "Regime Intact"
-    alert_body = f"Drift detection model flags high-confidence regime transition. Market instability index at critical level. Drift score {current_drift} exceeds alert threshold of 60.0. Exercise caution on new entries." if current_drift > 60 else f"Market regime remains stable. Current drift score is {current_drift}, which is below the critical threshold of 60.0. Trend signals intact."
+    feature_thresholds = {
+        "volatility": 0.15,
+        "volume": 0.20,
+        "rsi": 0.15,
+        "return": 0.15
+    }
+    for feat, thresh in feature_thresholds.items():
+        feat_score = result["features"].get(feat, 0)
+        if feat_score > thresh:
+            warnings.append({"icon": "📉", "text": f"{feat.upper()} distribution drift: {feat_score:.3f}"})
+            
+    warnings = warnings[:3]
     
-    return jsonify({
-        "driftScore": { "value": str(round(current_drift, 1)), "tag": "CRITICAL" if current_drift > 60 else "STABLE", "tagClass": "critical" if current_drift > 60 else "stable" },
-        "stabilityIdx": { "value": f"{int(current_stability)}/100", "tag": "LOW" if current_stability < 40 else "HIGH", "tagClass": "low" if current_stability < 40 else "stable" },
-        "regimeAge": { "value": f"{age} days", "tag": "VOLATILE" if current_drift > 60 else "STABLE", "tagClass": "volatile" if current_drift > 60 else "stable" },
-        "alertLevel": { "value": f"LEVEL {alert_level}", "tag": "OF 5", "tagClass": "volatile" if current_drift > 60 else "stable" },
+    timeline_labels = [item["date"] for item in history_timeline]
+    timeline_values = [item["score"] for item in history_timeline]
+    
+    response_data = {
+        # New API requirements
+        "symbol": normalized_symbol,
+        "drift_score": overall_drift,
+        "status": status_str,
+        "features": result["features"],
+        "timeline": history_timeline,
+        "recommendation": status["message"],
+        
+        # Existing UI compatibility fields
+        "driftScore": { "value": f"{overall_drift:.4f}", "tag": drift_tag, "tagClass": drift_class },
+        "stabilityIdx": { "value": f"{int((1 - min(1.0, overall_drift)) * 100)}/100", "tag": stability_tag, "tagClass": stability_class },
+        "regimeAge": { "value": f"{regime_age} days", "tag": regime_tag, "tagClass": regime_class },
+        "alertLevel": { "value": f"LEVEL {alert_level}", "tag": "OF 5", "tagClass": alert_class },
         "alertTitle": alert_title,
         "alertBody": alert_body,
         "driftTimelineLabels": timeline_labels,
-        "driftTimelineValues": drift_timeline,
+        "driftTimelineValues": timeline_values,
         "returnDistLabels": labels_dist,
         "returnDistBefore": before_list,
         "returnDistAfter": after_list,
         "warnings": warnings,
         "last_scraped": last_scraped
-    })
+    }
+    
+    return jsonify(response_data)
 
 @app.route('/api/market/regime', methods=['GET'])
 def get_market_regime():

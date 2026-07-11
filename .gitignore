@@ -3,3 +3,6 @@ dist/
 .DS_Store
 *.log
 scratch/
+drift_history/
+training_data/
+__pycache__/
