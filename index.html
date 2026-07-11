@@ -355,18 +355,18 @@
                 </div>
                 <span class="forecast-badge-expected" id="predictExpectedChange">+6.2% EXPECTED</span>
               </div>
-              <p class="forecast-desc">LSTM ensemble with drift-aware retraining projects upward movement based on momentum divergence, volume accumulation, and sector regime alignment. Model retrained 4h ago.</p>
+              <p class="forecast-desc" id="predictForecastDesc">LSTM ensemble with drift-aware retraining projects upward movement based on momentum divergence, volume accumulation, and sector regime alignment. Model retrained 4h ago.</p>
             </div>
             <div class="gauge-group">
               <div class="gauge">
                 <div class="gauge-circle">
                   <svg viewBox="0 0 80 80">
                     <circle class="track" cx="40" cy="40" r="34" />
-                    <circle class="fill" cx="40" cy="40" r="34" stroke="var(--accent-teal)"
+                    <circle class="fill" id="predictConfidenceFill" cx="40" cy="40" r="34" stroke="var(--accent-teal)"
                       stroke-dasharray="213.6"
                       stroke-dashoffset="27.8" />
                   </svg>
-                  <span class="value-text">87</span>
+                  <span class="value-text" id="predictConfidenceVal">87</span>
                 </div>
                 <span class="gauge-label">AI Confidence</span>
               </div>
@@ -374,11 +374,11 @@
                 <div class="gauge-circle">
                   <svg viewBox="0 0 80 80">
                     <circle class="track" cx="40" cy="40" r="34" />
-                    <circle class="fill" cx="40" cy="40" r="34" stroke="var(--accent-amber)"
+                    <circle class="fill" id="predictDriftFill" cx="40" cy="40" r="34" stroke="var(--accent-amber)"
                       stroke-dasharray="213.6"
                       stroke-dashoffset="76.9" />
                   </svg>
-                  <span class="value-text">64</span>
+                  <span class="value-text" id="predictDriftVal">64</span>
                 </div>
                 <span class="gauge-label">Drift Score</span>
               </div>
@@ -409,19 +409,19 @@
             </div>
             <div class="reasoning-item">
               <div class="reasoning-title green">📈 Trend Analysis</div>
-              <div class="reasoning-body">14-day momentum shows sustained upward pressure. EMA crossover confirmed at BDT 228.40. RSI at 62 — not yet overbought.</div>
+              <div class="reasoning-body" id="reasoningTrend">14-day momentum shows sustained upward pressure. EMA crossover confirmed at BDT 228.40. RSI at 62 — not yet overbought.</div>
             </div>
             <div class="reasoning-item">
               <div class="reasoning-title amber">◎ Anomaly Detection</div>
-              <div class="reasoning-body">Volume spike detected on Jan 19 (+340% above 20-day avg). Unusual call option accumulation noted in derivatives market.</div>
+              <div class="reasoning-body" id="reasoningAnomaly">Volume spike detected on Jan 19 (+340% above 20-day avg). Unusual call option accumulation noted in derivatives market.</div>
             </div>
             <div class="reasoning-item">
               <div class="reasoning-title cyan">↗ Drift Context</div>
-              <div class="reasoning-body">Market drift elevated but sector model shows pharma decoupling from broader DSE index. Sector alpha positive.</div>
+              <div class="reasoning-body" id="reasoningDrift">Market drift elevated but sector model shows pharma decoupling from broader DSE index. Sector alpha positive.</div>
             </div>
             <div class="reasoning-item">
               <div class="reasoning-title red">⊘ Risk Factors</div>
-              <div class="reasoning-body">Approval cycle risk present. Current regulatory pipeline uncertain. Raw material cost dependency on import channels — BDT depreciation adds pressure.</div>
+              <div class="reasoning-body" id="reasoningRisk">Approval cycle risk present. Current regulatory pipeline uncertain. Raw material cost dependency on import channels — BDT depreciation adds pressure.</div>
             </div>
           </div>
         </div>

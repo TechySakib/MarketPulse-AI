@@ -42,7 +42,12 @@ export async function initHeatmap() {
   let heatmapData = [];
   try {
     const res = await fetch('/api/confidence');
-    heatmapData = await res.json();
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const data = await res.json();
+    if (data.error || !Array.isArray(data)) {
+      throw new Error(data.error || 'Response is not an array');
+    }
+    heatmapData = data;
   } catch (err) {
     console.warn('Failed to fetch live confidence heatmap, using client fallback:', err);
     // client fallback based on tickers
