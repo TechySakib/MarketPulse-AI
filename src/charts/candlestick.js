@@ -49,7 +49,7 @@ export function initCandlestickChart(containerId) {
 
   // AI Forecast line overlay
   const forecastSeries = chart.addSeries(LineSeries, {
-    color: '#0066FF',       // Core Cobalt Blue
+    color: '#00D4FF',       // Cyan to match the legend
     lineWidth: 1.5,
     lineStyle: LineStyle.Dashed,
     crosshairMarkerVisible: false,
