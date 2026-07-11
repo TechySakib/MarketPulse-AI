@@ -10,6 +10,7 @@ import torch.nn as nn
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+from datetime import datetime
 from drift_monitor.feature_engineering import create_features
 from drift_monitor.wasserstein import calculate_drift
 from drift_monitor.recommendation import get_status
@@ -742,7 +743,10 @@ def get_drift_details(symbol=None):
             else:
                 break
                 
-    # Map metrics
+    # Map metrics and scale for UI (overall_drift * 240.0 translates to 0-100 UI scale)
+    ui_drift_score = min(99.0, max(1.0, overall_drift * 240.0))
+    ui_stability = int(100.0 - ui_drift_score)
+    
     if status_str == 'Stable':
         alert_level = 1
         drift_tag = 'STABLE'
@@ -784,8 +788,8 @@ def get_drift_details(symbol=None):
         alert_tag = 'HIGH'
         alert_class = 'volatile'
         
-    alert_title = "Regime Intact" if overall_drift < 0.25 else "Structural Break Likely"
-    alert_body = f"Market behavior matches training distribution. Current drift score is {overall_drift:.4f}, which is below the critical threshold." if overall_drift < 0.25 else f"Drift detection model flags high-confidence regime transition. Drift score {overall_drift:.4f} exceeds critical threshold. Retraining recommended."
+    alert_title = "Regime Intact" if ui_drift_score < 60.0 else "Structural Break Likely"
+    alert_body = f"Market behavior matches training distribution. Current drift score is {ui_drift_score:.1f}, which is below the critical threshold." if ui_drift_score < 60.0 else f"Drift detection model flags high-confidence regime transition. Drift score {ui_drift_score:.1f} exceeds critical threshold of 60.0. Retraining recommended."
     
     # Calculate return distribution
     bins = [-0.03, -0.02, -0.01, 0.0, 0.01, 0.02, 0.03]
@@ -802,7 +806,7 @@ def get_drift_details(symbol=None):
     
     # Warnings list
     warnings = []
-    if overall_drift > 0.25:
+    if ui_drift_score > 60.0:
         warnings.append({"icon": "⚠", "text": "High volatility regime detected"})
         warnings.append({"icon": "⚡", "text": f"Structural break likely (Alert Level {alert_level})"})
     else:
@@ -822,9 +826,34 @@ def get_drift_details(symbol=None):
             
     warnings = warnings[:3]
     
-    timeline_labels = [item["date"] for item in history_timeline]
-    timeline_values = [item["score"] for item in history_timeline]
+    # Calculate historical drift timeline for the last 18 trading days
+    timeline_values = []
+    timeline_labels = []
     
+    num_points = 18
+    if len(df_live) >= num_points + 20:
+        for i in range(len(df_live) - num_points, len(df_live)):
+            sub_df = df_live.iloc[:i+1]
+            sub_features = create_features(sub_df)
+            if len(sub_features) > 0:
+                sub_live = {}
+                for col in training:
+                    sub_live[col] = sub_features[col].tolist()
+                sub_result = calculate_drift(training, sub_live)
+                # Scale the historical values too
+                val_scaled = min(99.0, max(1.0, sub_result["overall"] * 240.0))
+                timeline_values.append(val_scaled)
+                try:
+                    date_str = df_live.iloc[i]["time"]
+                    date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+                    formatted_date = date_obj.strftime("%b %d")
+                    timeline_labels.append(formatted_date)
+                except Exception:
+                    timeline_labels.append(df_live.iloc[i]["time"])
+    else:
+        timeline_labels = [item["date"] for item in history_timeline]
+        timeline_values = [min(99.0, max(1.0, item["score"] * 240.0)) for item in history_timeline]
+        
     response_data = {
         # New API requirements
         "symbol": normalized_symbol,
@@ -835,8 +864,8 @@ def get_drift_details(symbol=None):
         "recommendation": status["message"],
         
         # Existing UI compatibility fields
-        "driftScore": { "value": f"{overall_drift:.4f}", "tag": drift_tag, "tagClass": drift_class },
-        "stabilityIdx": { "value": f"{int((1 - min(1.0, overall_drift)) * 100)}/100", "tag": stability_tag, "tagClass": stability_class },
+        "driftScore": { "value": f"{ui_drift_score:.1f}", "tag": drift_tag, "tagClass": drift_class },
+        "stabilityIdx": { "value": f"{ui_stability}/100", "tag": stability_tag, "tagClass": stability_class },
         "regimeAge": { "value": f"{regime_age} days", "tag": regime_tag, "tagClass": regime_class },
         "alertLevel": { "value": f"LEVEL {alert_level}", "tag": "OF 5", "tagClass": alert_class },
         "alertTitle": alert_title,

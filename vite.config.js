@@ -267,7 +267,7 @@ export default defineConfig({
             pathname === '/api/predict' ||
             pathname === '/api/features' ||
             pathname === '/api/confidence' ||
-            pathname === '/api/drift' ||
+            pathname.startsWith('/api/drift') ||
             pathname === '/api/market/regime' ||
             pathname.startsWith('/api/portfolio')
           ) {
