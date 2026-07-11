@@ -153,7 +153,7 @@ async function loadActiveCharts() {
     
     // 1. Update lightweight candlestick chart if ready
     if (chartInstances.candlestick && history.length > 0) {
-      updateCandlestickChartData(chartInstances.candlestick, history);
+      updateCandlestickChartData(chartInstances.candlestick, history, activePredictions);
       
       // Update OHLC legend values from last point
       const lastPoint = history[history.length - 1];

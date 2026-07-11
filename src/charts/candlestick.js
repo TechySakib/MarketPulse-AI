@@ -78,11 +78,12 @@ export function initCandlestickChart(containerId) {
 }
 
 /**
- * Updates the candlestick chart with dynamic history data and synthesizes an AI forecast line
+ * Updates the candlestick chart with dynamic history data and renders the actual AI forecast line
  * @param {Object} chartInstances The references returned by initCandlestickChart
  * @param {Array} historyData List of candle objects { time, open, high, low, close, volume }
+ * @param {Array} predictions The dynamic AI predictions array for the next 5 days
  */
-export function updateCandlestickChartData(chartInstances, historyData) {
+export function updateCandlestickChartData(chartInstances, historyData, predictions) {
   if (!chartInstances || !historyData || historyData.length === 0) return;
 
   const { candleSeries, forecastSeries, volSeries, chart } = chartInstances;
@@ -98,7 +99,7 @@ export function updateCandlestickChartData(chartInstances, historyData) {
   }));
   volSeries.setData(volData);
 
-  // 3. Synthesize AI Forecast line (5 days projection)
+  // 3. Render AI Forecast line (5 days projection) using actual predictions
   const lastPoint = historyData[historyData.length - 1];
   const lastPrice = lastPoint.close;
   const lastTime = new Date(lastPoint.time);
@@ -108,7 +109,13 @@ export function updateCandlestickChartData(chartInstances, historyData) {
   forecastData.push({ time: lastPoint.time, value: lastPrice });
   
   let currDate = new Date(lastTime);
-  for (let j = 1; j <= 5; j++) {
+  let predList = predictions;
+  if (!predList || !Array.isArray(predList) || predList.length === 0) {
+    // Graceful fallback projection if no actual predictions are loaded yet
+    predList = [lastPrice * 1.002, lastPrice * 1.005, lastPrice * 1.008, lastPrice * 1.01, lastPrice * 1.012];
+  }
+
+  for (let j = 0; j < predList.length; j++) {
     currDate.setDate(currDate.getDate() + 1);
     // Skip DSE weekends (Friday/Saturday)
     while (currDate.getDay() === 5 || currDate.getDay() === 6) {
@@ -116,11 +123,9 @@ export function updateCandlestickChartData(chartInstances, historyData) {
     }
     const timeString = currDate.toISOString().split('T')[0];
     
-    // Create a minor positive bias projection for demo/AI regime
-    const projectionPrice = parseFloat((lastPrice * (1 + j * 0.003 + (Math.random() - 0.3) * 0.004)).toFixed(2));
     forecastData.push({
       time: timeString,
-      value: projectionPrice
+      value: predList[j]
     });
   }
   forecastSeries.setData(forecastData);
