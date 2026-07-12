@@ -175,6 +175,16 @@ export default defineConfig({
 
             try {
               const html = await fetchDSEPage(`/displayCompany.php?name=${encodeURIComponent(symbol)}`);
+              const rawLastUpdate = extractTableValue(html, 'Last Update') || 'N/A';
+              let lastUpdate = rawLastUpdate;
+              if (rawLastUpdate !== 'N/A' && !/\d{4}-\d{2}-\d{2}/.test(rawLastUpdate)) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                lastUpdate = `${year}-${month}-${day} ${rawLastUpdate}`;
+              }
+
               const metrics = {
                 price: extractTableValue(html, 'Last Trading Price') || '0.00',
                 daysRange: extractTableValue(html, "Day's Range") || '0.00 - 0.00',
@@ -184,7 +194,7 @@ export default defineConfig({
                 marketCap: extractTableValue(html, "Market Capitalization (mn)") || '0.00',
                 sector: extractTableValue(html, "Sector") || 'Unknown',
                 pe: extractPE(html) || 'N/A',
-                lastUpdate: extractTableValue(html, 'Last Update') || 'N/A'
+                lastUpdate: lastUpdate
               };
               
               // Save to cache

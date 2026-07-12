@@ -206,7 +206,19 @@ async function loadStockData(symbol) {
     
     const subtitleEl = document.getElementById('detailsStockSubtitle');
     if (subtitleEl) {
-      const updateStr = metrics.lastUpdate ? ` · Last Update: ${metrics.lastUpdate}` : '';
+      let updateStr = '';
+      if (metrics.lastUpdate && metrics.lastUpdate !== 'N/A') {
+        let lastUpdate = metrics.lastUpdate;
+        const hasDate = /\d{4}-\d{2}-\d{2}|[A-Za-z]{3}\s+\d{1,2}/.test(lastUpdate);
+        if (!hasDate) {
+          const now = new Date();
+          const year = now.getFullYear();
+          const month = String(now.getMonth() + 1).padStart(2, '0');
+          const day = String(now.getDate()).padStart(2, '0');
+          lastUpdate = `${year}-${month}-${day} ${lastUpdate}`;
+        }
+        updateStr = ` · Last Update: ${lastUpdate}`;
+      }
       subtitleEl.textContent = `${symbol} Ltd · Dhaka Stock Exchange${updateStr}`;
     }
 
