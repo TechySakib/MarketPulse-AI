@@ -19,14 +19,15 @@ from drift_monitor.drift_history import save_history
 app = Flask(__name__)
 CORS(app)
 
-MODELS_BASE_DIR = r"G:\MarketPulse-AI\DSE_PatchTST_Adjusted_Models"
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODELS_BASE_DIR = os.path.join(_BASE_DIR, "DSE_PatchTST_Adjusted_Models")
 
 # Global memory caches for models and scalers to optimize inference latency
 MODEL_CACHE = {}
 SCALER_CACHE = {}
 
-SCRAPED_CACHE_FILE = r"G:\MarketPulse-AI\scraped_cache.json"
-PORTFOLIO_FILE = r"G:\MarketPulse-AI\portfolio.json"
+SCRAPED_CACHE_FILE = os.path.join(_BASE_DIR, "scraped_cache.json")
+PORTFOLIO_FILE = os.path.join(_BASE_DIR, "portfolio.json")
 
 def load_scraper_cache():
     if os.path.exists(SCRAPED_CACHE_FILE):
@@ -1134,4 +1135,4 @@ def prewarm_model_cache():
 
 if __name__ == '__main__':
     prewarm_model_cache()
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=False)

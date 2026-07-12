@@ -789,57 +789,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Set initial narrator time
   updateNarrator(currentView);
 
-  // Portfolio Management Form bindings
-  const addBtn = document.getElementById('addPortBtn');
-  if (addBtn) {
-    addBtn.addEventListener('click', async () => {
-      const symbolInput = document.getElementById('portSymbol');
-      const sharesInput = document.getElementById('portShares');
-      const statusMsg = document.getElementById('portStatusMsg');
-      
-      const symbol = symbolInput ? symbolInput.value.trim().toUpperCase() : '';
-      const shares = sharesInput ? parseInt(sharesInput.value) : 0;
-      
-      if (!symbol || shares <= 0) {
-        if (statusMsg) {
-          statusMsg.style.color = '#ef4444';
-          statusMsg.textContent = 'Invalid symbol or shares quantity';
-          statusMsg.style.display = 'block';
-        }
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/portfolio/manage', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ action: 'add', symbol, shares })
-        });
-        
-        const resData = await response.json();
-        if (response.ok) {
-          if (statusMsg) {
-            statusMsg.style.color = 'var(--accent-teal)';
-            statusMsg.textContent = `Added ${shares} shares of ${symbol}`;
-            statusMsg.style.display = 'block';
-          }
-          if (symbolInput) symbolInput.value = '';
-          if (sharesInput) sharesInput.value = '';
-          loadPortfolio();
-        } else {
-          if (statusMsg) {
-            statusMsg.style.color = '#ef4444';
-            statusMsg.textContent = resData.error || 'Failed to add holding';
-            statusMsg.style.display = 'block';
-          }
-        }
-      } catch (err) {
-        console.error('Failed to manage portfolio:', err);
-      }
-    });
-  }
 
   const removeBtn = document.getElementById('removePortBtn');
   if (removeBtn) {

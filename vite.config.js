@@ -283,12 +283,12 @@ export default defineConfig({
           ) {
             const options = {
               hostname: 'localhost',
-              port: 5000,
+              port: 5001,
               path: req.url,
               method: req.method,
               headers: {
                 ...req.headers,
-                host: 'localhost:5000'
+                host: 'localhost:5001'
               }
             };
             
