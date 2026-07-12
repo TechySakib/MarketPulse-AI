@@ -678,18 +678,7 @@ async function loadPortfolio() {
       `;
     }
     
-    // Recommendations
-    const recCard = document.querySelector('#view-my-portfolio .card:has(.rec-row)');
-    if (recCard) {
-      const rows = data.portfolioRecommendations.map(rec => `
-        <div class="rec-row">
-          <span class="badge-action ${rec.actionClass}">${rec.action}</span>
-          <span class="rec-stock">${rec.stock} ${rec.risk ? `<span class="${rec.riskClass}" style="margin-left:4px;">${rec.risk}</span>` : ''}</span>
-          <span class="rec-desc">${rec.desc}</span>
-        </div>
-      `).join('');
-      recCard.innerHTML = `<div class="card-header"><span class="icon">ⓘ</span> AI PORTFOLIO RECOMMENDATIONS</div>${rows}`;
-    }
+
     
     // Asset Allocation Doughnut legend
     const legend = document.querySelector('.donut-legend');
@@ -702,19 +691,7 @@ async function loadPortfolio() {
       `).join('');
     }
     
-    // Risk Exposure progress bars
-    const riskRows = document.querySelectorAll('#view-my-portfolio .risk-row');
-    data.riskExposure.forEach((item, idx) => {
-      if (riskRows[idx]) {
-        riskRows[idx].querySelector('.risk-label').textContent = item.label;
-        const fill = riskRows[idx].querySelector('.risk-bar-fill');
-        fill.style.width = `${item.value}%`;
-        fill.className = `risk-bar-fill ${item.barClass}`;
-        const val = riskRows[idx].querySelector('.risk-value');
-        val.textContent = item.value;
-        val.className = `risk-value ${item.barClass}`;
-      }
-    });
+
     
     // Update Portfolio Charts if initialized
     if (chartInstances.portfolio) {
