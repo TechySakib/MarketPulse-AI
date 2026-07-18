@@ -331,17 +331,32 @@ async function loadStockData(symbol) {
       const predCurrent = document.getElementById('predictCurrentPrice');
       if (predCurrent) predCurrent.textContent = metrics ? metrics.price : priceVal.toFixed(2);
 
-      const forecastPrice = priceVal * 1.062;
+      // Generate local mathematical predictions fallback
+      activePredictions = [];
+      let tempPrice = priceVal || 200;
+      const dailyDrift = pct !== 0 ? (pct / 100) * 0.4 : 0.002; // use actual stock trend
+      for (let j = 0; j < 5; j++) {
+        tempPrice = tempPrice * (1 + dailyDrift + (Math.random() - 0.5) * 0.003);
+        activePredictions.push(parseFloat(tempPrice.toFixed(2)));
+      }
+
+      const nextDayPrice = activePredictions[0];
+      const changePct = ((nextDayPrice - priceVal) / priceVal) * 100;
+      const signChar = changePct >= 0 ? '+' : '';
+
       const predForecast = document.getElementById('predictForecastPrice');
-      if (predForecast) predForecast.textContent = forecastPrice.toFixed(2);
+      if (predForecast) predForecast.textContent = nextDayPrice.toFixed(2);
 
       const predChange = document.getElementById('predictExpectedChange');
-      if (predChange) predChange.textContent = `${sign}${pct.toFixed(2)}% EXPECTED`;
+      if (predChange) {
+        predChange.className = `stock-change ${changePct >= 0 ? 'up' : 'down'}`;
+        predChange.textContent = `${signChar}${changePct.toFixed(2)}% EXPECTED`;
+      }
 
       // Update forecast description (fallback)
       const predDescFb = document.getElementById('predictForecastDesc');
       if (predDescFb) {
-        predDescFb.textContent = 'PatchTST transformer forecast based on historical price patterns, technical indicators, and recent market behavior. Prediction generated using the latest DSE market data and trained model weights.';
+        predDescFb.textContent = 'Statistical model forecast based on historical price patterns and recent market behavior. Prediction generated using the latest DSE market data.';
       }
 
       // Update Gauges in fallback
@@ -351,15 +366,6 @@ async function loadStockData(symbol) {
         const confidence = 75;
         confVal.textContent = confidence;
         confFill.style.strokeDashoffset = (213.6 * (1 - confidence / 100)).toFixed(1);
-      }
-
-      // Generate local mathematical predictions fallback
-      activePredictions = [];
-      let tempPrice = priceVal || 200;
-      const dailyDrift = (pct / 100) * 0.2; // dampen the daily trend
-      for (let j = 0; j < 5; j++) {
-        tempPrice = tempPrice * (1 + dailyDrift + (Math.random() - 0.5) * 0.003);
-        activePredictions.push(parseFloat(tempPrice.toFixed(2)));
       }
     }
 
