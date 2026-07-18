@@ -170,8 +170,7 @@ async function loadActiveCharts() {
     
     // 3. Update scenario projection chart if ready
     if (chartInstances.scenario && history.length > 0) {
-      const lastPoint = history[history.length - 1];
-      updateScenarioChartData(chartInstances.scenario, lastPoint.close, activePredictions);
+      updateScenarioChartData(chartInstances.scenario, priceVal, activePredictions);
     }
   } catch (err) {
     console.error('Failed to load active stock charts:', err);

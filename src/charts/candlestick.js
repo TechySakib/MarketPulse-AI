@@ -115,14 +115,6 @@ export function updateCandlestickChartData(chartInstances, historyData, predicti
     predList = [lastPrice * 1.002, lastPrice * 1.005, lastPrice * 1.008, lastPrice * 1.01, lastPrice * 1.012];
   }
 
-  // Determine the base price of the prediction to scale from
-  // We assume predList was generated relative to some current price. 
-  // We want the visual trend to exactly match the AI's predicted direction.
-  // Instead of using absolute prediction values (which might cause a jump from lastPrice),
-  // we apply the relative percentage change of the predictions to lastPrice.
-  // If the first prediction is higher than the base, it goes UP. If lower, DOWN.
-  const basePrice = predList[0]; 
-
   for (let j = 0; j < predList.length; j++) {
     currDate.setDate(currDate.getDate() + 1);
     // Skip DSE weekends (Friday/Saturday)
@@ -131,56 +123,13 @@ export function updateCandlestickChartData(chartInstances, historyData, predicti
     }
     const timeString = currDate.toISOString().split('T')[0];
     
-    // Scale the prediction to connect smoothly from lastPrice while maintaining the exact predicted trend
-    const relativeChange = predList[j] / basePrice;
-    // We want the first point to be slightly shifted from lastPrice based on the trend, 
-    // but the easiest way to preserve the exact shape is to make the first point = lastPrice * (predList[0]/current_actual_price).
-    // However, since we don't have current_actual_price here, we can just start the forecast from the first prediction directly.
-    // Wait, if we just plot predList directly, it might jump.
-    // Let's just use the absolute values for now, but connect from predList[0] instead of lastPrice to avoid misleading visual connections!
-    // No, lightweight-charts requires a continuous line if we want it to look connected.
-    // Let's connect lastPrice to predList[0]. If there's a jump, it represents a gap up/down.
-    
+    // We plot the exact predicted values. We intentionally DO NOT connect 
+    // to the last historical price to ensure the slope perfectly represents
+    // the AI's predicted trend without artificial distortion from older data.
     forecastData.push({
       time: timeString,
       value: predList[j]
     });
-  }
-  
-  // To fix the visual mismatch (e.g. AI says DOWN but graph line goes UP from lastPrice to predList[0]),
-  // we will adjust the connection point. Instead of connecting from lastPrice to predList[0],
-  // we'll make the forecast line purely the predicted values, without forcing a connection to lastPrice,
-  // OR we scale it so the shape is identical.
-  // Let's scale it so predList[0] visually continues from lastPrice:
-  const scaleFactor = lastPrice / basePrice;
-  
-  // Re-write the forecast data with scaled values
-  forecastData.length = 0; // Clear
-  forecastData.push({ time: lastPoint.time, value: lastPrice });
-  
-  currDate = new Date(lastTime);
-  for (let j = 0; j < predList.length; j++) {
-    currDate.setDate(currDate.getDate() + 1);
-    while (currDate.getDay() === 5 || currDate.getDay() === 6) {
-      currDate.setDate(currDate.getDate() + 1);
-    }
-    const timeString = currDate.toISOString().split('T')[0];
-    
-    // Applying scaleFactor ensures that if predList[0] is < basePrice, it goes DOWN from lastPrice.
-    // Wait, basePrice IS predList[0]. So scaleFactor = lastPrice / predList[0].
-    // If we multiply predList[0] by scaleFactor, it becomes lastPrice. That means the line will be flat on day 1.
-    // That's not right. The AI predicts a change for day 1.
-    // Let's use the actual predictions and just NOT connect it to lastPrice!
-    forecastData.push({
-      time: timeString,
-      value: predList[j]
-    });
-  }
-  // By omitting the connection to lastPrice, the forecast line will start exactly at the first predicted value.
-  // Wait, if we omit it, lightweight charts will just start a new line. But earlier we had: forecastData.push({ time: lastPoint.time, value: lastPrice });
-  // Let's just remove that line so it doesn't artificially connect and show the wrong slope!
-  if (forecastData[0].time === lastPoint.time) {
-      forecastData.shift();
   }
   
   forecastSeries.setData(forecastData);
